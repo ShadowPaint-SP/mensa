@@ -6,12 +6,15 @@ const STORAGE_KEY = 'mensa-hidden-canteens-v1';
 const $ = (id) => document.getElementById(id);
 const dateFormat = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' });
 const money = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
-const todayParts = Object.fromEntries(dateFormat.formatToParts(new Date()).map(({ type, value }) => [type, value]));
-const today = `${todayParts.year}-${todayParts.month}-${todayParts.day}`;
-function defaultsToEvening(date) {
-  const parts = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: 'numeric', hourCycle: 'h23' }).formatToParts(date);
-  return Number(parts.find(({ type }) => type === 'hour').value) >= 15;
+function initialMenuSelection(date) {
+  const parts = Object.fromEntries(dateFormat.formatToParts(date).map(({ type, value }) => [type, value]));
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  const timeParts = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: 'numeric', hourCycle: 'h23' }).formatToParts(date);
+  const hour = Number(timeParts.find(({ type }) => type === 'hour').value);
+  return { today, date: hour >= 19 ? shiftDate(today, 1) : today, evening: hour >= 15 && hour < 19 };
 }
+const initialSelection = initialMenuSelection(new Date());
+const today = initialSelection.today;
 
 function isEveningMeal(meal) {
   // The API currently puts this prefix in category, while the reference site
@@ -23,7 +26,7 @@ function isVeganMeal(meal) {
   return Array.isArray(meal.notes) && meal.notes.some((note) => typeof note === 'string' && /^Menü ist vegan$/i.test(note.trim()));
 }
 
-let eveningOnly = defaultsToEvening(new Date());
+let eveningOnly = initialSelection.evening;
 let veganOnly = false;
 let priceCategory = 'student';
 const priceCategories = {
@@ -32,7 +35,7 @@ const priceCategories = {
   guest: { label: 'Gäste', keys: ['Gäste', 'others'] },
 };
 const priceSources = new WeakMap();
-let selectedDate = today;
+let selectedDate = initialSelection.date;
 let canteens = [];
 let hidden = new Set();
 let requestVersion = 0;

@@ -326,6 +326,37 @@ try {
     assert([...days].filter((day) => day.getAttribute('aria-pressed') === 'true').length === 1, 'Selected weekend or weekday remains visible');
   }
   pass('Five-day mobile navigation preserves selected weekends and weekdays');
+  const defaultCases = [
+    ['2026-01-15T13:59:59Z', '2026-01-15', false],
+    ['2026-01-15T14:00:00Z', '2026-01-15', true],
+    ['2026-01-15T17:59:59Z', '2026-01-15', true],
+    ['2026-01-15T18:00:00Z', '2026-01-16', false],
+    ['2026-07-15T12:59:59Z', '2026-07-15', false],
+    ['2026-07-15T13:00:00Z', '2026-07-15', true],
+    ['2026-07-15T16:59:59Z', '2026-07-15', true],
+    ['2026-07-15T17:00:00Z', '2026-07-16', false],
+    ['2026-12-31T18:00:00Z', '2027-01-01', false],
+    ['2028-02-28T18:00:00Z', '2028-02-29', false],
+    ['2026-03-28T18:00:00Z', '2026-03-29', false],
+    ['2026-10-24T17:00:00Z', '2026-10-25', false],
+    ['2026-01-16T18:00:00Z', '2026-01-17', false],
+    ['2026-07-15T22:00:00Z', '2026-07-16', false]
+  ];
+  for (const [instant, expectedDate, expectedEvening] of defaultCases) {
+    const previousDocument = doc();
+    const timedFixtures = fixtures.replaceAll('2026-10-22T10:00:00Z', instant);
+    frame.srcdoc = html.replace('<head>', `<head><base href="${new URL('../', location.href)}"><script>${timedFixtures}<\/script>`)
+      .replace('<link rel="stylesheet" href="./styles.css">', `<style>${css.replace(/^@import.*$/m, '')}</style>`);
+    for (let i = 0; i < 200; i++) {
+      if (doc() !== previousDocument && doc()?.querySelector('.cafeteria-chip') &&
+          doc().querySelector('#menus')?.getAttribute('aria-busy') === 'false') break;
+      await wait();
+    }
+    assert(doc().querySelector('#date-input')?.value === expectedDate, `Default date at ${instant}`);
+    assert(doc().querySelector('#evening-switch')?.checked === expectedEvening, `Default meal period at ${instant}`);
+    assert(frame.contentWindow.testRequests.some((url) => url.includes(`/days/${expectedDate}/meals`)), `Requested menu date at ${instant}`);
+  }
+  pass('Berlin defaults at 15:00/19:00, winter/summer time, year/leap-day/DST/weekend rollover and midnight');
   output.textContent += '\n\nAll tests passed. Physical-device touch testing remains a separate check.';
   document.title = 'PASS — Swipe regression tests';
 } catch (error) {
