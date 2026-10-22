@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="description" content="Dein Mensa-Speiseplan für Dresden, Tharandt, Zittau und Görlitz. Alle Gerichte, echte Bilder und deine Lieblingsmensen auf einen Blick.">
+    <title>mensa. — Was gibt’s heute?</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#menus">Zum Speiseplan</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="./" aria-label="mensa. Startseite">mensa<span class="brand-dot">.</span></a>
+        <span class="header-location">Speiseplan · Dresden & Umgebung</span>
+      </div>
+    </header>
+    <main class="container">
+      <h1 class="sr-only">Mensa-Speiseplan</h1>
+      <section class="controls" aria-label="Speiseplan filtern">
+        <div class="date-controls">
+          <div class="week-navigation">
+            <button id="previous-week" class="week-arrow" aria-label="Vorherige Woche">‹</button>
+            <div id="day-viewport" class="day-viewport"><div id="week-days" class="week-days" aria-label="Tag auswählen"></div></div>
+            <button id="next-week" class="week-arrow" aria-label="Nächste Woche">›</button>
+          </div>
+          <input id="date-input" type="date" aria-label="Datum des Speiseplans wählen">
+        </div>
+        <div class="filter-toolbar">
+          <details class="cafeteria-filter">
+            <summary>Mensen <span id="selection-count"></span></summary>
+            <div class="filter-content">
+              <button id="toggle-all" class="text-button" disabled>Alle abwählen</button>
+              <div id="cafeteria-options" class="cafeteria-options"><span class="filter-loading">Mensen werden geladen …</span></div>
+            </div>
+          </details>
+          <div class="quick-filters">
+            <fieldset id="price-category" class="price-category">
+              <legend class="sr-only">Preiskategorie</legend>
+              <label><input type="radio" name="price-category" value="student" checked><span>Student</span></label>
+              <label><input type="radio" name="price-category" value="employee"><span>Bediensteter</span></label>
+              <label><input type="radio" name="price-category" value="guest"><span>Gäste</span></label>
+            </fieldset>
+            <label class="vegan-filter"><input id="vegan-filter" type="checkbox">Vegan</label>
+            <label class="meal-period">
+              <input id="evening-switch" type="checkbox" role="switch" aria-label="Abendmenüs statt Mittagsmenüs anzeigen">
+              <span class="period-highlight" aria-hidden="true"></span>
+              <span class="period-option period-lunch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Mittag</span>
+              <span class="period-option period-evening"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8.5 8.5 0 0 1 10 4 8.5 8.5 0 1 0 20 14Z"/><path class="moon-star" d="M18 3v4m-2-2h4"/></svg>Abend</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="menu-area" aria-labelledby="menu-heading">
+        <div class="results-heading">
+          <div><h2 id="menu-heading" class="sr-only">Gerichte</h2><p id="results-summary" class="results-summary" role="status">Der Speiseplan wird geladen …</p></div>
+          <button id="start-picker" class="picker-start" type="button" disabled>♡ Gerichte swipen</button>
+        </div>
+        <div id="menus" aria-busy="true"></div>
+      </section>
+      <noscript><div class="message"><h3>Bitte JavaScript aktivieren</h3><p>Die Speisepläne werden direkt von der offiziellen API geladen. Dafür benötigt dein Browser JavaScript.</p><a href="https://www.studentenwerk-dresden.de/mensen/speiseplan/">Zum offiziellen Speiseplan</a></div></noscript>
+    </main>
+    <dialog id="meal-picker" class="meal-picker" aria-labelledby="picker-title">
+      <div class="picker-header"><h2 id="picker-title">Gerichte swipen</h2><button id="close-picker" class="picker-close" type="button" aria-label="Auswahl schließen">×</button></div>
+      <div id="picker-body"></div>
+    </dialog>
+    <footer class="site-footer"><div class="footer-inner"><a class="brand footer-brand" href="./">mensa<span class="brand-dot">.</span></a><a href="https://www.studentenwerk-dresden.de/mensen/speiseplan/" target="_blank" rel="noopener noreferrer">Daten & Bilder: Studentenwerk Dresden <span aria-hidden="true">↗</span></a></div><p class="footer-disclaimer">Ein unabhängiger Speiseplan. Angaben ohne Gewähr. Preise und Verfügbarkeit können sich ändern.</p></footer>
+  </body>
+</html>

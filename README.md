@@ -1,1 +1,56 @@
-# mensa
+# mensa.
+
+A static, German-language menu browser for the cafeterias operated by Studentenwerk Dresden. No backend, API key, build step, or package installation is required.
+
+## Run locally
+
+Serve this directory with any static HTTP server, for example:
+
+```sh
+python3 -m http.server 8000
+```
+
+Then open http://localhost:8000. Do not open `index.html` as a `file://` URL; browsers can restrict JavaScript modules on local files.
+
+To test on a phone connected to the same Wi-Fi network, bind the server to the local network:
+
+```sh
+python3 -m http.server 8006 --bind 0.0.0.0
+```
+
+Open `http://<computer-LAN-IP>:8006` on the phone (not `localhost`). Allow local-network access through the computer's firewall if prompted. This exposes the served directory to devices on the local network; stop the server when finished and do not forward this port to the internet.
+
+## Deploy
+
+Publish `index.html`, `styles.css`, `app.js`, `meal-picker.js`, `swipe.js`, and `favicon.svg` together on any HTTPS static host (including GitHub Pages). All asset paths are relative, so subdirectory deployments work.
+
+## Data and scope
+
+- Cafeterias and dated menus are fetched directly in the browser from https://api.studentenwerk-dresden.de/openmensa/v2. The official API permits cross-origin requests.
+- The initial date is the current date in `Europe/Berlin`. Week navigation and the date picker request menus for the chosen date; unpublished dates show an explicit empty state.
+- On mobile, the date strip shows five days. Swipe horizontally to browse five days forward/back, or use the arrows to shift the strip by one day. Browsing does not request menus until a date is tapped. Desktop retains seven-day weeks and week arrows. Today has an accent-colored border even when selected; date animations respect reduced motion.
+- Cafeteria visibility is saved in local storage on the visitor’s device. All cafeterias are selected initially. The compact “Mensen” disclosure opens the full filter list without changing the selection.
+- Cafeteria addresses are not displayed. “Route” uses Apple Maps on iPhones and Google Maps on other devices, with the cafeteria’s official API address as the destination. The HTTPS Maps link opens in a new tab or the installed Maps app, as handled by the device. The visitor chooses their starting point in Maps. Cafeterias without an address have no route link.
+- The Mittag/Abend switch separates lunch from evening meals. An `Abendangebot` prefix in the API category or meal name identifies evening meals. At page opening, the switch defaults to evening from 15:00 in `Europe/Berlin` (including daylight saving time); before that it defaults to lunch. Manual changes remain selected across date/filter changes, but are not persisted across reloads or overridden by a timer.
+- The “Vegan” checkbox restricts the current lunch/evening view to dishes explicitly marked “Menü ist vegan” in the provider’s notes. It is off initially and does not infer vegan status from names or ingredients. This filter stays selected during date, cafeteria, and meal-period changes, but resets on reload.
+- The “Student / Bediensteter / Gäste” price selector defaults to Student on each page load. Each card shows only the selected category’s published price (or “Keine Preisangabe” if unavailable). Both the Dresden API’s German price keys and standard OpenMensa keys are supported. Changing category updates prices in place, without fetching menus or resetting meal pages; the selection is retained across the other filters and dates.
+- Cafeterias without matching meals are omitted; a clear empty state appears when none match. Failed cafeterias remain visible with retry controls. Raw cached API responses are shared between lunch and evening views, so switching does not discard either set of meals.
+- Each cafeteria shows up to three meals at a time on desktop/tablet, in API order. On mobile (up to 560px wide), it shows one meal at a time: horizontal finger gestures move the card continuously with the finger, then advance or snap back. Both distance and quick flicks can complete a swipe. Previous/next buttons remain as an accessible alternative. Tiny, cancelled and vertical gestures do not change meals; pagination stops at the ends. Resizing preserves the current meal's group.
+- Browse cards have a fixed height of 420px, with no internal scrolling. Descriptions are previews; “Gericht & Allergene” opens the complete text and all notes in a separate details dialog. Each page reserves the same grid rows even for a partial last group. Off-screen groups are hidden from assistive technology and keyboard navigation.
+- Cafeterias with no more meals than fit on one page need no navigation. Changing the date or cafeteria selection resets the meal pages.
+- “Gerichte swipen” opens a modal picker with the loaded meals matching the selected cafeterias, date, Mittag/Abend and Vegan filters. Like/reject buttons work with keyboard and mouse; horizontal swipes across the whole card support touch, with directional drag and dismissal animations. Interactive buttons are excluded from dragging. Reduced-motion users still get direct finger tracking, but without automatic slide or dismissal animations.
+- The next meal is rendered directly beneath the current voting card, with its photo preloaded, so dragging the top card reveals the next meal immediately. This preview cannot receive focus or votes; it becomes the active meal only after the current vote is complete.
+- The voting card fits the available viewport without internal scrolling. Long meal names are shown as a preview; “Gericht & Allergene” opens a separate, scrollable details dialog with the complete description and all notes. On short landscape displays the photo is hidden to preserve room for the meal and voting controls. The final liked-meal list can still scroll.
+- At the end of a swipe session, all liked meals are listed with the cafeteria where each is served. A meal served at multiple cafeterias is evaluated separately for each cafeteria. Sold-out meals remain clearly labeled, as in the menu browser. Picks are session-only; closing the picker, restarting, or changing filters/date resets them. The picker is disabled while menus load or no meals are available; partial API failures are disclosed in the picker.
+- Photos, prices, sold-out status, dietary labels, and allergen notes come from the API. Missing photos and the API’s generic promotional image receive a neutral placeholder, never an unrelated food photo. Dietary labels reflect provider notes, not inferred ingredients.
+- Successful menu responses are cached in memory for five minutes. Requests run with a maximum concurrency of four; changing dates or filters cancels obsolete requests. Failed cafeterias can be retried independently of successful cached results.
+- Only menu browsing and the swipe-based meal picker are implemented: no accounts, ordering, maps, advertising, or other reference-site features.
+- Google Fonts provides optional typography; system fallback fonts keep the page usable if that request fails.
+
+Data and images remain those of [Studentenwerk Dresden](https://www.studentenwerk-dresden.de/mensen/speiseplan/). This is an independent interface, not the official website.
+
+## Browser regression checks
+
+With the static server running, open `/tests/swipe.html`. It loads the production modules in an isolated iframe with API fixtures and simulated touch-pointer events. It checks live finger-position transforms before release, capture-loss events from nested elements, pagination, cancellation, no-scroll card layouts, full details, and voting. It does not change saved cafeteria preferences or query the live menu API. Test results appear on the page.
+
+These checks do not replace real-device testing of native touch input, scrolling, and browser gesture arbitration.
