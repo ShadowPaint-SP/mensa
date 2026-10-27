@@ -87,7 +87,11 @@ try {
   }
   function contrast(node) {
     const style = win().getComputedStyle(node);
-    const values = [luminance(style.color), luminance(style.backgroundColor)].sort((a, b) => b - a);
+    let background = node;
+    while (background.parentElement && win().getComputedStyle(background).backgroundColor === 'rgba(0, 0, 0, 0)') {
+      background = background.parentElement;
+    }
+    const values = [luminance(style.color), luminance(win().getComputedStyle(background).backgroundColor)].sort((a, b) => b - a);
     assert((values[0] + .05) / (values[1] + .05) >= 4.5,
       `Text contrast: ${node.className || node.tagName} (${style.color} on ${style.backgroundColor})`);
   }
@@ -107,9 +111,11 @@ try {
       doc().querySelector('.price-category span')]) contrast(node);
     for (const options of doc().querySelectorAll('.dietary-options')) {
       for (const input of options.querySelectorAll('input')) {
-        input.click();
-        input.nextElementSibling.getAnimations().forEach((animation) => animation.finish());
-        contrast(input.nextElementSibling);
+        for (let i = 0; i < 2; i++) {
+          input.click();
+          input.nextElementSibling.getAnimations().forEach((animation) => animation.finish());
+          contrast(input.nextElementSibling);
+        }
       }
     }
     assert(card.getBoundingClientRect().height === 420, 'Theme preserves fixed card height');

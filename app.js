@@ -1,5 +1,7 @@
 import { createMealPicker } from './meal-picker.js';
 import { horizontalSwipe } from './swipe.js';
+import { isVeganMeal, isVegetarianMeal, mealTitleCodes, matchesMealFilters } from './meal-filters.js';
+import { downloadMealCalendar } from './calendar.js';
 
 const API = 'https://api.studentenwerk-dresden.de/openmensa/v2';
 const STORAGE_KEY = 'mensa-hidden-canteens-v1';
@@ -22,28 +24,12 @@ function isEveningMeal(meal) {
   return [meal.category, meal.name].some((value) => typeof value === 'string' && /^\s*Abendangebot\b/i.test(value));
 }
 
-function isVeganMeal(meal) {
-  return Array.isArray(meal.notes) && meal.notes.some((note) => typeof note === 'string' && /^Menü ist vegan$/i.test(note.trim()));
-}
-
-function isVegetarianMeal(meal) {
-  return isVeganMeal(meal) || (Array.isArray(meal.notes) &&
-    meal.notes.some((note) => typeof note === 'string' && /^Menü ist vegetarisch$/i.test(note.trim())));
-}
-
-const dietaryFilters = {
-  vegan: { label: 'vegan', matches: isVeganMeal },
-  vegetarian: { label: 'vegetarisch', matches: isVegetarianMeal },
-};
-
-function matchesDietarySelection(meal, selection) {
-  return Object.entries(selection).every(([type, mode]) =>
-    mode === 'all' || dietaryFilters[type].matches(meal) === (mode === 'only')
-  );
-}
-
 let eveningOnly = initialSelection.evening;
-const dietarySelection = { vegan: 'all', vegetarian: 'all' };
+let tomView = false;
+const dietaryLabels = { meat: 'Fleisch/Fisch', vegetarian: 'Vegetarisch', vegan: 'Vegan' };
+const dietarySelection = new Set(Object.keys(dietaryLabels));
+const excludedCodes = new Set();
+let codeLabels = new Map();
 let priceCategory = 'student';
 const priceCategories = {
   student: { label: 'Student', keys: ['Studierende', 'students'] },
@@ -109,8 +95,8 @@ function renderDays() {
   // Initialize around the selected date; browsing the strip does not select a day.
   if (!mobileDayStart) mobileDayStart = monday;
   const start = mobileMeals.matches ? mobileDayStart : monday;
-  $('previous-week').setAttribute('aria-label', mobileMeals.matches ? 'Vorheriger Wochentag' : 'Vorherige Woche');
-  $('next-week').setAttribute('aria-label', mobileMeals.matches ? 'Nächster Wochentag' : 'Nächste Woche');
+  $('previous-week').setAttribute('aria-label', mobileMeals.matches && !tomView ? 'Vorheriger Wochentag' : 'Vorherige Woche');
+  $('next-week').setAttribute('aria-label', mobileMeals.matches && !tomView ? 'Nächster Wochentag' : 'Nächste Woche');
   $('week-days').replaceChildren();
   for (let i = 0; i < dayCount; i++) {
     const iso = shiftWeekdays(start, i);
@@ -125,7 +111,7 @@ function renderDays() {
     button.addEventListener('click', () => changeDate(iso));
     $('week-days').append(button);
   }
-  $('menu-heading').textContent = selectedDate === today ? 'Gerichte heute' : 'Gerichte';
+  $('menu-heading').textContent = tomView ? 'Tom-View: Abendangebote der Woche' : selectedDate === today ? 'Gerichte heute' : 'Gerichte';
 }
 
 function changeDate(iso) {
@@ -137,7 +123,7 @@ function changeDate(iso) {
 }
 
 function navigateDays(offset, dragOffset = 0) {
-  if (!mobileMeals.matches) {
+  if (!mobileMeals.matches || tomView) {
     changeDate(shiftDate(selectedDate, offset));
     return;
   }
@@ -185,7 +171,7 @@ horizontalSwipe($('day-viewport'), {
     if (!mobileMeals.matches) { grid.style.transform = ''; return; }
     if (!cancelled && (Math.abs(dx) >= Math.min(65, $('day-viewport').clientWidth * .2) ||
         (Math.abs(dx) > 20 && Math.abs(velocityX) > .5 && dx * velocityX > 0))) {
-      navigateDays(dx < 0 ? 5 : -5, offset);
+      navigateDays(dx < 0 ? (tomView ? 7 : 5) : (tomView ? -7 : -5), offset);
     } else {
       grid.style.transform = '';
       if (offset && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -284,16 +270,16 @@ const detailDialog = element('dialog', 'meal-picker picker-detail');
 detailDialog.setAttribute('aria-label', 'Gericht und Allergene');
 document.body.append(detailDialog);
 
-function showMealDetails(meal) {
+function showMealDetails(meal, calendarEntry) {
   const close = element('button', 'picker-close', '×');
   close.type = 'button';
   close.setAttribute('aria-label', 'Details schließen');
   close.addEventListener('click', () => detailDialog.close());
-  detailDialog.replaceChildren(close, mealCard(meal, { full: true }));
+  detailDialog.replaceChildren(close, mealCard(meal, { full: true, calendarEntry }));
   detailDialog.showModal();
 }
 
-function mealCard(meal, { full = false } = {}) {
+function mealCard(meal, { full = false, calendarEntry } = {}) {
   const card = element('article', full ? 'meal-card' : 'meal-card meal-preview');
   const photo = element('div', 'meal-photo');
   const notes = Array.isArray(meal.notes) ? meal.notes.filter((note) => typeof note === 'string') : [];
@@ -336,24 +322,36 @@ function mealCard(meal, { full = false } = {}) {
   if (!full) {
     const details = element('button', 'text-button meal-details-button', 'Gericht & Allergene');
     details.type = 'button';
-    details.addEventListener('click', () => showMealDetails(meal));
+    details.addEventListener('click', () => showMealDetails(meal, calendarEntry));
     content.append(details);
     card.addEventListener('click', (event) => {
       if (event.target.closest('button,a,input,select,textarea,summary,details')) return;
-      showMealDetails(meal);
+      showMealDetails(meal, calendarEntry);
     });
+  }
+  if (calendarEntry) {
+    const calendar = element('button', 'meal-calendar-button');
+    calendar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16m8 3v4m-2-2h4"/></svg>';
+    calendar.append(element('span', '', 'zum Kalender hinzufügen'));
+    calendar.type = 'button';
+    calendar.setAttribute('aria-label', `zum Kalender hinzufügen: ${meal.name}, am ${calendarEntry.date} von 17:30 bis 19:00 Uhr`);
+    calendar.title = '17:30–19:00 Uhr · Europe/Berlin · Kalendertermin (.ics) herunterladen';
+    calendar.addEventListener('click', () => downloadMealCalendar(calendarEntry));
+    content.append(calendar);
   }
   card.append(photo, content);
   return card;
 }
 
-function canteenSection(canteen, result) {
+function canteenSection(canteen, result, date) {
   const section = element('section', 'canteen-section');
+  const identity = `${canteen.id}${date ? `-${date}` : ''}`;
+  if (date) section.dataset.date = date;
   const heading = element('div', 'canteen-heading');
   const info = element('div');
   const title = element('div', 'canteen-title');
-  const name = element('h3', '', canteen.name);
-  name.id = `canteen-${canteen.id}`;
+  const name = element(date ? 'h4' : 'h3', '', canteen.name);
+  name.id = `canteen-${identity}`;
   section.setAttribute('aria-labelledby', name.id);
   title.append(name);
   if (typeof canteen.address === 'string' && canteen.address.trim()) {
@@ -387,7 +385,7 @@ function canteenSection(canteen, result) {
     section.append(element('div', 'canteen-empty', 'Für diesen Tag sind keine Gerichte veröffentlicht. Die Mensa ist möglicherweise geschlossen.'));
   } else {
     const viewport = element('div', `meal-viewport${result.meals.length > 3 ? ' is-paginated' : ''}`);
-    viewport.id = `meals-${canteen.id}`;
+    viewport.id = `meals-${identity}`;
     const track = element('div', 'meal-track');
     viewport.append(track);
     section.append(viewport);
@@ -398,7 +396,8 @@ function canteenSection(canteen, result) {
       track.replaceChildren();
       for (let start = 0; start < result.meals.length; start += pageSize) {
         const group = element('div', 'meal-grid meal-page');
-        group.append(...result.meals.slice(start, start + pageSize).map((meal) => mealCard(meal)));
+        group.append(...result.meals.slice(start, start + pageSize).map((meal) =>
+          mealCard(meal, { calendarEntry: date ? { meal, canteen, date } : undefined })));
         pages.push(group);
         track.append(group);
       }
@@ -487,6 +486,63 @@ const mealPicker = createMealPicker({
   renderCard: mealCard
 });
 
+function renderAdditiveOptions(meals) {
+  const options = new Map();
+  for (const meal of meals) {
+    for (const code of mealTitleCodes(meal)) options.set(code, code);
+  }
+  for (const meal of meals) {
+    if (!Array.isArray(meal.notes)) continue;
+    for (const note of meal.notes) {
+      if (typeof note !== 'string') continue;
+      const match = note.match(/^(.+?)\s*\(([A-Z]\d*|\d+)\)\s*$/i);
+      if (match && options.has(match[2].toUpperCase())) {
+        options.set(match[2].toUpperCase(), match[1].trim());
+      }
+    }
+  }
+  // Keep excluded codes available even when another date/cafeteria has no dishes
+  // carrying them, so a user can always undo an exclusion.
+  for (const code of excludedCodes) {
+    if (!options.has(code)) options.set(code, codeLabels.get(code) || code);
+  }
+  codeLabels = options;
+  const focusedCode = document.activeElement?.dataset.code;
+  const container = $('additive-options');
+  container.replaceChildren(element('legend', 'sr-only', 'Gerichte mit diesen Codes ausblenden'));
+  for (const [code, description] of [...options].sort(([a], [b]) =>
+    a.localeCompare(b, 'de', { numeric: true }))) {
+    const label = element('label', 'additive-option');
+    const input = element('input');
+    input.type = 'checkbox';
+    input.dataset.code = code;
+    input.checked = excludedCodes.has(code);
+    label.append(input, element('span', '', description === code ? code : `${code} · ${description}`));
+    container.append(label);
+    if (focusedCode === code) input.focus({ preventScroll: true });
+  }
+  if (!options.size) container.append(element('p', 'filter-loading', 'Keine Codes in den verfügbaren Gerichtstiteln.'));
+  $('additive-count').textContent = excludedCodes.size ? `${excludedCodes.size} ausgeblendet` : 'Keine ausgeblendet';
+  $('clear-additives').disabled = !excludedCodes.size;
+}
+
+function tomDaySection(date, entries) {
+  const section = element('section', 'tom-day');
+  section.dataset.date = date;
+  const heading = element('h3', 'tom-day-heading',
+    asDate(date).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }));
+  heading.id = `tom-day-${date}`;
+  section.setAttribute('aria-labelledby', heading.id);
+  section.append(heading);
+  const available = entries.filter(({ result }) => result.error || result.meals.length);
+  if (available.length) {
+    section.append(...available.map(({ canteen, result }) => canteenSection(canteen, result, date)));
+  } else {
+    section.append(element('p', 'canteen-empty', 'Keine passenden Abendangebote für die ausgewählten Mensen veröffentlicht.'));
+  }
+  return section;
+}
+
 async function loadMenus() {
   if (detailDialog.open) detailDialog.close();
   mealPicker.setMeals([]);
@@ -498,6 +554,7 @@ async function loadMenus() {
   const container = $('menus');
   container.replaceChildren();
   if (!visible.length) {
+    renderAdditiveOptions([]);
     container.setAttribute('aria-busy', 'false');
     $('results-summary').textContent = 'Keine Mensa ausgewählt';
     container.append(message('Keine Mensa ausgewählt', 'Wähle oben mindestens eine Mensa aus, um ihren Speiseplan zu sehen.'));
@@ -510,51 +567,70 @@ async function loadMenus() {
   for (let i = 0; i < 3; i++) loading.append(element('div', 'skeleton'));
   container.append(loading);
   const date = selectedDate;
-  const evening = eveningOnly;
-  const diet = { ...dietarySelection };
+  const weekly = tomView;
+  const monday = shiftDate(date, -((asDate(date).getUTCDay() + 6) % 7));
+  const dates = weekly ? Array.from({ length: 5 }, (_, i) => shiftDate(monday, i)) : [date];
+  const evening = weekly || eveningOnly;
+  const diet = new Set(dietarySelection);
+  const exclusions = new Set(excludedCodes);
+  const tasks = dates.flatMap((date) => visible.map((canteen) => ({ date, canteen })));
   // Limit concurrent API requests, while preserving the official cafeteria order.
-  const results = new Array(visible.length);
+  const results = new Array(tasks.length);
   let cursor = 0;
   async function worker() {
-    while (cursor < visible.length && !signal.aborted) {
+    while (cursor < tasks.length && !signal.aborted) {
       const index = cursor++;
-      const key = `${visible[index].id}/${date}`;
+      const { canteen, date } = tasks[index];
+      const key = `${canteen.id}/${date}`;
       const cached = menuCache.get(key);
       try {
         let meals = cached && Date.now() - cached.time < 300000 ? cached.meals : null;
         if (!meals) {
-          meals = (await fetchArray(`${API}/canteens/${visible[index].id}/days/${date}/meals`, signal)).data;
+          meals = (await fetchArray(`${API}/canteens/${canteen.id}/days/${date}/meals`, signal)).data;
           menuCache.set(key, { meals, time: Date.now() });
         }
-        results[index] = { meals: meals.filter((meal) => isEveningMeal(meal) === evening && matchesDietarySelection(meal, diet)) };
+        results[index] = { meals };
       } catch (error) {
         if (signal.aborted) return;
         results[index] = { meals: [], error: true };
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(4, visible.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(4, tasks.length) }, worker));
   if (version !== requestVersion) return;
-  const available = visible.map((canteen, i) => ({ canteen, result: results[i] }))
-    .filter(({ result }) => result.error || result.meals.length);
-  container.replaceChildren(...available.map(({ canteen, result }) => canteenSection(canteen, result)));
-  if (!available.length) {
+  renderAdditiveOptions(results.flatMap((result) => result.meals));
+  results.forEach((result) => {
+    result.meals = result.meals.filter((meal) =>
+      isEveningMeal(meal) === evening && matchesMealFilters(meal, diet, exclusions));
+  });
+  const entries = tasks.map((task, i) => ({ ...task, result: results[i] }));
+  const available = entries.filter(({ result }) => result.error || result.meals.length);
+  if (weekly) {
+    container.replaceChildren(...dates.map((date) => tomDaySection(date, entries.filter((entry) => entry.date === date))));
+  } else {
+    container.replaceChildren(...available.map(({ canteen, result }) => canteenSection(canteen, result)));
+  }
+  if (!weekly && !available.length) {
     container.append(message(
-      evening ? 'Keine passenden Abendangebote' : 'Keine passenden Mittagsgerichte',
-      'Für die ausgewählten Mensen und diesen Tag sind keine passenden Gerichte veröffentlicht. Ändere die Filter, den Tag oder die Mensa-Auswahl.'
+      !diet.size ? 'Keine Ernährungsart ausgewählt' : evening ? 'Keine passenden Abendangebote' : 'Keine passenden Mittagsgerichte',
+      !diet.size ? 'Wähle mindestens eine Ernährungsart aus.' : 'Für die ausgewählten Mensen und diesen Tag sind keine passenden Gerichte veröffentlicht. Ändere die Filter, den Tag oder die Mensa-Auswahl.'
     ));
   }
   container.setAttribute('aria-busy', 'false');
   const total = results.reduce((sum, result) => sum + result.meals.length, 0);
   const errors = results.filter((result) => result.error).length;
-  const dateLabel = asDate(date).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-  const dietarySummary = Object.entries(diet).filter(([, mode]) => mode !== 'all')
-    .map(([type, mode]) => mode === 'only' ? `Nur ${dietaryFilters[type].label}` : `${dietaryFilters[type].label} ausgeblendet`);
-  $('results-summary').textContent = [dateLabel, evening ? 'Abend' : 'Mittag', ...dietarySummary,
-    `${available.length} Mensen`, `${total} Gerichte`, ...(errors ? [`${errors} nicht abrufbar`] : [])].join(' · ');
-  mealPicker.setMeals(visible.flatMap((canteen, i) =>
-    results[i].meals.map((meal) => ({ meal, canteen }))
-  ), { dateLabel, unavailableCount: errors });
+  const dateLabel = weekly
+    ? `${asDate(monday).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', timeZone: 'UTC' })} – ${asDate(dates[dates.length - 1]).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}`
+    : asDate(date).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const dietarySummary = diet.size === 3 ? [] : [diet.size ? [...diet].map((type) => dietaryLabels[type]).join(', ') : 'Keine Ernährungsart ausgewählt'];
+  $('results-summary').textContent = [...(weekly ? ['Tom-View'] : []), dateLabel, evening ? 'Abend' : 'Mittag', ...dietarySummary,
+    ...(exclusions.size ? [`Ausgeblendet: ${[...exclusions].join(', ')}`] : []),
+    `${new Set(available.map(({ canteen }) => canteen.id)).size} Mensen`, `${total} Gerichte`, ...(errors ? [`${errors} nicht abrufbar`] : [])].join(' · ');
+  if (!weekly) {
+    mealPicker.setMeals(entries.flatMap(({ canteen, result }) =>
+      result.meals.map((meal) => ({ meal, canteen }))
+    ), { dateLabel, unavailableCount: errors });
+  }
 }
 
 async function init() {
@@ -590,21 +666,40 @@ $('price-category').addEventListener('change', (event) => {
     renderMealPrice(container, priceSources.get(container));
   });
 });
-for (const type of Object.keys(dietaryFilters)) {
-  $(`${type}-filter`).addEventListener('change', (event) => {
-    if (!['all', 'only', 'hide'].includes(event.target.value)) return;
-    dietarySelection[type] = event.target.value;
-    if (canteens.length) loadMenus();
-  });
-}
+$('dietary-filter').addEventListener('change', (event) => {
+  const { value, checked } = event.target;
+  if (!Object.hasOwn(dietaryLabels, value)) return;
+  checked ? dietarySelection.add(value) : dietarySelection.delete(value);
+  if (canteens.length) loadMenus();
+});
+$('additive-options').addEventListener('change', (event) => {
+  const { code } = event.target.dataset;
+  if (!codeLabels.has(code)) return;
+  event.target.checked ? excludedCodes.add(code) : excludedCodes.delete(code);
+  if (canteens.length) loadMenus();
+});
+$('clear-additives').addEventListener('click', () => {
+  excludedCodes.clear();
+  if (canteens.length) loadMenus();
+});
 $('evening-switch').checked = eveningOnly;
 $('evening-switch').addEventListener('change', (event) => {
   eveningOnly = event.target.checked;
   if (canteens.length) loadMenus();
 });
+$('tom-view').addEventListener('click', () => {
+  tomView = !tomView;
+  $('tom-view').setAttribute('aria-pressed', String(tomView));
+  $('evening-switch').disabled = tomView;
+  $('evening-switch').checked = tomView || eveningOnly;
+  $('start-picker').hidden = tomView;
+  mobileDayStart = undefined;
+  renderDays();
+  if (canteens.length) loadMenus();
+});
 $('date-input').addEventListener('change', (event) => changeDate(event.target.value));
-$('previous-week').addEventListener('click', () => navigateDays(mobileMeals.matches ? -1 : -7));
-$('next-week').addEventListener('click', () => navigateDays(mobileMeals.matches ? 1 : 7));
+$('previous-week').addEventListener('click', () => navigateDays(mobileMeals.matches && !tomView ? -1 : -7));
+$('next-week').addEventListener('click', () => navigateDays(mobileMeals.matches && !tomView ? 1 : 7));
 mobileMeals.addEventListener('change', () => {
   mobileDayStart = undefined;
   renderDays();

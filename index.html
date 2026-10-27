@@ -50,30 +50,32 @@
               <label><input type="radio" name="price-category" value="employee"><span>Bediensteter</span></label>
               <label><input type="radio" name="price-category" value="guest"><span>Gäste</span></label>
             </fieldset>
-            <div class="dietary-control">
-              <span id="vegan-label">Vegan</span>
-              <fieldset id="vegan-filter" class="dietary-options" aria-labelledby="vegan-label">
-                <label title="Vegan: keine Einschränkung"><input type="radio" name="vegan-filter" value="all" aria-label="Vegan: keine Einschränkung" checked><span aria-hidden="true">×</span></label>
-                <label title="Nur vegane Gerichte"><input type="radio" name="vegan-filter" value="only" aria-label="Nur vegane Gerichte"><span aria-hidden="true">✓</span></label>
-                <label title="Vegane Gerichte ausblenden"><input type="radio" name="vegan-filter" value="hide" aria-label="Vegane Gerichte ausblenden"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11 11 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.1 3.8M6.5 6.5A20 20 0 0 0 2 12s4 7 10 7a11 11 0 0 0 5.5-1.5"/></svg></span></label>
-              </fieldset>
-            </div>
-            <div class="dietary-control">
-              <span id="vegetarian-label">Vegetarisch</span>
-              <fieldset id="vegetarian-filter" class="dietary-options" aria-labelledby="vegetarian-label" aria-describedby="dietary-hint">
-                <label title="Vegetarisch: keine Einschränkung"><input type="radio" name="vegetarian-filter" value="all" aria-label="Vegetarisch: keine Einschränkung" checked><span aria-hidden="true">×</span></label>
-                <label title="Nur vegetarische Gerichte (inklusive vegan)"><input type="radio" name="vegetarian-filter" value="only" aria-label="Nur vegetarische Gerichte (inklusive vegan)"><span aria-hidden="true">✓</span></label>
-                <label title="Vegetarische und vegane Gerichte ausblenden"><input type="radio" name="vegetarian-filter" value="hide" aria-label="Vegetarische und vegane Gerichte ausblenden"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11 11 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.1 3.8M6.5 6.5A20 20 0 0 0 2 12s4 7 10 7a11 11 0 0 0 5.5-1.5"/></svg></span></label>
-              </fieldset>
-              <span id="dietary-hint" class="sr-only">Vegetarisch schließt vegane Gerichte ein. Beide Filter gelten gleichzeitig und verwenden die Kennzeichnungen des Studentenwerks.</span>
-            </div>
+            <fieldset id="dietary-filter" class="dietary-options" aria-describedby="dietary-hint">
+              <legend class="sr-only">Ernährungsarten auswählen</legend>
+              <label title="Fleisch/Fisch und nicht vegetarisch gekennzeichnete Gerichte"><input type="checkbox" name="dietary-filter" value="meat" aria-label="Fleisch/Fisch und nicht vegetarisch gekennzeichnete Gerichte" checked><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4c3 2 3 7 0 11s-8 6-12 4S2 12 5 8 15 1 19 4Z"/><path d="M15 6c2 1 2 4 0 6s-5 3-7 1 0-5 2-6 3-2 5-1Z"/><circle cx="12" cy="9" r="1"/></svg></span></label>
+              <label title="Vegetarische Gerichte ohne vegane Gerichte"><input type="checkbox" name="dietary-filter" value="vegetarian" aria-label="Vegetarische Gerichte ohne vegane Gerichte" checked><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 8 2 2c3 3-7 11-13 11 0-6 8-16 11-13Z"/><path d="m16 8 1-5m0 5 5-1m-4 0 3-4M8 13l3 3m0-7 3 3"/></svg></span></label>
+              <label title="Vegane Gerichte"><input type="checkbox" name="dietary-filter" value="vegan" aria-label="Vegane Gerichte" checked><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3C9 2 3 7 5 14c2 7 14 6 15-11Z"/><path d="M3 22 16 8m-7 8-1-5m5 1 4 1"/></svg></span></label>
+            </fieldset>
+            <span id="dietary-hint" class="sr-only">Mehrfachauswahl. Vegetarisch und vegan sind getrennte Gruppen. Fleisch/Fisch enthält auch Gerichte ohne vegetarische oder vegane Kennzeichnung des Studentenwerks.</span>
             <label class="meal-period">
               <input id="evening-switch" type="checkbox" role="switch" aria-label="Abendmenüs statt Mittagsmenüs anzeigen">
               <span class="period-highlight" aria-hidden="true"></span>
               <span class="period-option period-lunch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Mittag</span>
               <span class="period-option period-evening"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8.5 8.5 0 0 1 10 4 8.5 8.5 0 1 0 20 14Z"/><path class="moon-star" d="M18 3v4m-2-2h4"/></svg>Abend</span>
             </label>
+            <button id="tom-view" class="tom-toggle" type="button" aria-pressed="false" title="Abendangebote der ganzen Woche anzeigen">Tom-View</button>
           </div>
+          <details class="additive-filter">
+            <summary>Allergene & Zusatzstoffe <span id="additive-count">Keine ausgeblendet</span></summary>
+            <div class="additive-content">
+              <p id="additive-hint">Codes auswählen, um Gerichte damit auszublenden. Es zählen nur Codes in Klammern im Gerichtstitel. Fehlende Kennzeichnungen bedeuten nicht allergenfrei; bitte Hinweise des Studentenwerks prüfen.</p>
+              <button id="clear-additives" class="text-button" type="button" disabled>Auswahl zurücksetzen</button>
+              <fieldset id="additive-options" class="additive-options" aria-describedby="additive-hint">
+                <legend class="sr-only">Gerichte mit diesen Codes ausblenden</legend>
+                <span class="filter-loading">Codes werden geladen …</span>
+              </fieldset>
+            </div>
+          </details>
         </div>
       </section>
 

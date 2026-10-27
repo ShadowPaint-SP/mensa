@@ -1,3 +1,5 @@
+import { dietaryCategory, mealTitleCodes, matchesMealFilters } from '../meal-filters.js';
+
 const output = document.querySelector('#output');
 const frame = document.querySelector('#preview');
 const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -7,6 +9,18 @@ function assert(condition, label) {
 function pass(label) { output.textContent += `\nPASS: ${label}`; }
 
 try {
+  assert([...mealTitleCodes({ name: 'Pasta (A, A1, D) (2; 27) (A) (Z9)' })].join(',') === 'A,A1,D,2,27,Z9',
+    'Code parser deduplicates complete letter/numeric lists and supports unknown provider codes');
+  assert(!mealTitleCodes({ name: 'Vitamin A mit Reis (200 g) (nach Wahl) (-) ()' }).size,
+    'Code parser ignores prose, quantities, empty lists and uncoded letters');
+  assert(!mealTitleCodes({ name: null }).size, 'Missing title is safe');
+  assert(dietaryCategory({ notes: ['Menü ist vegetarisch', 'Menü ist vegan'] }) === 'vegan',
+    'Vegan classification takes priority');
+  assert(dietaryCategory({ notes: [' Menü ist vegetarisch '] }) === 'vegetarian' &&
+    dietaryCategory({ notes: [null, 'Menü ist vegan möglich'] }) === 'meat', 'Exact provider dietary labels only');
+  assert(matchesMealFilters({ name: 'Pasta (A1)', notes: ['Menü ist vegan'] }, new Set(['vegan']), new Set(['A'])),
+    'Pure filter uses whole codes, not substrings');
+  pass('Provider classification and title-code parser boundary cases');
   const [html, css] = await Promise.all([
     fetch('../index.html').then((response) => response.text()),
     fetch('../styles.css').then((response) => response.text())
@@ -30,13 +44,13 @@ try {
         category: 'Tagesgericht', prices: {Studierende: 2.35, Bedienstete: 4.9}
       });
       const evening = (id, vegan) => ({
-        ...meal(id), name: 'Abendangebot: Meal ' + id,
+        ...meal(id), name: 'Abendangebot: Meal ' + id + ({90:' (A, A1, 2)',91:' (D)',92:' (A1, G)'}[id] || ''),
         notes: vegan ? ['Menü ist vegan'] : []
       });
       const data = url.endsWith('/canteens')
         ? [{id:1,name:'Selected A',address:'Bergstraße 51, 01069 Dresden'},{id:2,name:'Hidden B'},{id:3,name:'Selected C'}]
         : url.includes('/canteens/1/') ? [
-          meal(1),meal(2),meal(3),meal(4),evening(90,true),
+          meal(1),meal(2),meal(3),meal(4),{...evening(90,true),notes:['Menü ist vegan','Glutenhaltiges Getreide (A)','Weizen (A1)','mit Konservierungsstoff (2)']},
           {...evening(91,false),notes:[null,42,'Menü ist vegan möglich']},
           {...evening(92,false),notes:[' Menü ist vegetarisch ']}
         ] : [meal(5)];
@@ -285,59 +299,82 @@ try {
   assert(doc().querySelectorAll('.canteen-section').length === 1, 'Only cafeteria with evening meals remains');
   doc().querySelector('#start-picker').click();
   assert(body.querySelector('.picker-progress').textContent.startsWith('1 von 3'), 'Picker uses only evening meals');
-  assert(body.querySelector('.meal-name').textContent === 'Abendangebot: Meal 90', 'Picker contains evening dish');
+  const eveningName = (id) => `Abendangebot: Meal ${id}${{90:' (A, A1, 2)',91:' (D)',92:' (A1, G)'}[id]}`;
+  assert(body.querySelector('.meal-name').textContent === eveningName(90), 'Picker contains evening dish');
   doc().querySelector('#close-picker').click();
-  assert(doc().querySelector('input[name="vegan-filter"]:checked').value === 'all' &&
-    doc().querySelector('input[name="vegetarian-filter"]:checked').value === 'all', 'Both dietary controls default to no restriction');
-  for (const input of doc().querySelectorAll('.dietary-options input')) {
-    assert(input.getAttribute('aria-label') === input.parentElement.title && input.parentElement.title.length > 10,
-      'Symbol controls have descriptive German tooltips and accessible labels');
-    assert(input.nextElementSibling.getAttribute('aria-hidden') === 'true', 'Decorative symbols do not replace accessible names');
-    const symbol = input.nextElementSibling;
-    if (input.value === 'hide') {
-      assert(symbol.querySelector('svg path')?.getAttribute('d').startsWith('m3 3 18 18'), 'Hide uses crossed-out eye SVG');
-    } else {
-      assert(symbol.textContent === (input.value === 'all' ? '×' : '✓'), 'Unrestricted and only modes use requested symbols');
-    }
+  assert(doc().querySelectorAll('#dietary-filter input:checked').length === 3, 'All three meal groups selected initially');
+  assert(doc().querySelectorAll('#dietary-filter input[type="checkbox"] + span svg[aria-hidden="true"]').length === 3,
+    'Each independently selectable meal group has a decorative icon');
+  for (const input of doc().querySelectorAll('#dietary-filter input')) {
+    assert(input.nextElementSibling.textContent.trim() === '', 'Dietary buttons display symbols only');
+    assert(input.getAttribute('aria-label') === input.parentElement.title, 'Icon-only controls retain accessible names and tooltips');
   }
   const requestsBeforeDietChanges = frame.contentWindow.testRequests.length;
   const diets = [
-    ['all', 'all', [90,91,92]],
-    ['all', 'only', [90,92]],
-    ['all', 'hide', [91]],
-    ['only', 'only', [90]],
-    ['only', 'hide', []],
-    ['hide', 'only', [92]],
-    ['hide', 'hide', [91]],
-    ['hide', 'all', [91,92]],
-    ['only', 'all', [90]]
+    [[], []], [['meat'], [91]], [['vegetarian'], [92]], [['vegan'], [90]],
+    [['meat','vegetarian'], [91,92]], [['meat','vegan'], [90,91]],
+    [['vegetarian','vegan'], [90,92]], [['meat','vegetarian','vegan'], [90,91,92]]
   ];
-  for (const [veganMode, vegetarianMode, ids] of diets) {
-    doc().querySelector(`input[name="vegan-filter"][value="${veganMode}"]`).click();
-    doc().querySelector(`input[name="vegetarian-filter"][value="${vegetarianMode}"]`).click();
+  for (const [selected, ids] of diets) {
+    for (const input of doc().querySelectorAll('#dietary-filter input')) {
+      if (input.checked !== selected.includes(input.value)) input.click();
+    }
     await wait();
-    const mode = `${veganMode}/${vegetarianMode}`;
+    const mode = selected.join('/') || 'none';
     const names = [...doc().querySelectorAll('#menus .meal-name')].map((name) => name.textContent);
-    assert(JSON.stringify(names) === JSON.stringify(ids.map((id) => 'Abendangebot: Meal ' + id)), `Diet ${mode} filters the browser correctly`);
+    assert(JSON.stringify(names) === JSON.stringify(ids.map(eveningName)), `Diet ${mode} filters the browser correctly`);
     assert(doc().querySelector('#evening-switch').checked, `Diet ${mode} preserves evening filter`);
     assert(doc().querySelector('input[name="price-category"]:checked').value === 'employee', `Diet ${mode} preserves price category`);
     if (ids.length) {
       doc().querySelector('#start-picker').click();
       assert(body.querySelector('.picker-progress').textContent.startsWith(`1 von ${ids.length}`), `Picker combines evening and ${mode} filters`);
-      assert(body.querySelector('.meal-name').textContent === 'Abendangebot: Meal ' + ids[0], `Picker starts with matching ${mode} meal`);
+      assert(body.querySelector('.meal-name').textContent === eveningName(ids[0]), `Picker starts with matching ${mode} meal`);
       doc().querySelector('#close-picker').click();
     } else {
-      assert(doc().querySelector('#start-picker').disabled && doc().querySelector('#menus .message'), 'Contradictory filters produce clear empty state and disable picker');
-      assert(doc().querySelector('input[name="vegan-filter"]:checked').value === veganMode &&
-        doc().querySelector('input[name="vegetarian-filter"]:checked').value === vegetarianMode, 'Contradictory selections are not silently reset');
+      assert(doc().querySelector('#start-picker').disabled && doc().querySelector('#menus .message'), 'Empty selection disables picker with a clear message');
+      assert(!doc().querySelector('#dietary-filter input:checked'), 'Empty selection is not silently reset');
     }
   }
   assert(frame.contentWindow.testRequests.length === requestsBeforeDietChanges, 'All dietary modes reuse cached raw menus');
+  doc().querySelector('.additive-filter').open = true;
+  const chooseCode = async (code) => {
+    const input = doc().querySelector(`#additive-options input[data-code="${code}"]`);
+    assert(input, `Code ${code} offered`);
+    input.focus();
+    input.click();
+    await wait();
+    assert(doc().activeElement.dataset.code === code, 'Code selection retains keyboard focus');
+  };
+  const currentNames = () => [...doc().querySelectorAll('#menus .meal-name')].map((node) => node.textContent);
+  assert(doc().querySelector('#additive-options input[data-code="A"]').parentElement.textContent.includes('Glutenhaltiges Getreide'),
+    'Code descriptions come from provider notes');
+  await chooseCode('A');
+  assert(JSON.stringify(currentNames()) === JSON.stringify([91,92].map(eveningName)), 'A exclusion does not match A1 by substring');
+  await chooseCode('D');
+  assert(JSON.stringify(currentNames()) === JSON.stringify([eveningName(92)]), 'Multiple code exclusions combine');
+  doc().querySelector('#start-picker').click();
+  assert(body.querySelector('.picker-progress').textContent.startsWith('1 von 1') &&
+    body.querySelector('.meal-name').textContent === eveningName(92), 'Picker respects additive exclusions');
+  doc().querySelector('#close-picker').click();
+  await chooseCode('A1');
+  assert(doc().querySelector('#start-picker').disabled, 'All excluded meals disables picker');
+  doc().querySelector('#clear-additives').click();
+  await wait();
+  assert(currentNames().length === 3, 'Reset restores all meals');
+  await chooseCode('2');
+  assert(JSON.stringify(currentNames()) === JSON.stringify([91,92].map(eveningName)), 'Numeric additive codes supported');
+  doc().querySelector('.cafeteria-chip[data-id="1"]').click();
+  await wait();
+  assert(doc().querySelector('#additive-options input[data-code="2"]').checked, 'Excluded code retained when cafeteria is hidden');
+  doc().querySelector('#clear-additives').click();
+  doc().querySelector('.cafeteria-chip[data-id="1"]').click();
+  await wait();
+  assert(frame.contentWindow.testRequests.length === requestsBeforeDietChanges, 'Additive changes reuse raw cached menus');
   for (const width of [320,390,768,1200]) {
     frame.width = width;
     await wait(100);
     assert(doc().documentElement.scrollWidth <= width, `Dietary controls fit ${width}px viewport`);
-    const controls = [...doc().querySelectorAll('.quick-filters > fieldset,.quick-filters > .dietary-control,.quick-filters > .meal-period')];
+    const controls = [...doc().querySelectorAll('.quick-filters > fieldset,.quick-filters > .meal-period')];
     for (let i = 0; i < controls.length; i++) {
       for (let j = i + 1; j < controls.length; j++) {
         const a = controls[i].getBoundingClientRect(), b = controls[j].getBoundingClientRect();
@@ -350,7 +387,7 @@ try {
   doc().querySelector('.cafeteria-chip[data-id="1"]').click();
   await wait();
   assert(doc().querySelector('#start-picker').disabled, 'No picker meals after matching cafeteria is hidden');
-  pass('All nine segmented dietary combinations, vegetarian includes vegan, empty-state handling, malformed labels, cached responses, responsive controls and picker/filter combinations');
+  pass('All eight dietary multiselect combinations, exact/numeric additive exclusions, reset/focus, cached menus, responsive controls and picker/filter combinations');
   // Restore normal motion after the reduced-motion checks.
   reducedMotionRule.media.mediaText = '(prefers-reduced-motion: reduce)';
   const daySurface = doc().querySelector('#day-viewport');
