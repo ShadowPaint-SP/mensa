@@ -215,6 +215,45 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .picker-results{list-style:none;padding:0;margin:0 0 20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .picker-results>li{min-width:0}
 .picker-empty{color:var(--muted);margin:25px 0}
+.meal-tools{display:flex;flex-wrap:wrap;gap:8px}
+.slot-start{background:var(--white);color:var(--ink);border-color:var(--line)}
+.slot-start>span{display:inline-block;margin-right:3px;color:var(--accent)}
+.slot-dialog{--slot-height:clamp(280px,52dvh,420px);width:min(620px,calc(100% - 24px))}
+.slot-context{margin:12px 0 16px}
+.slot-machine{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:6px;align-items:start}
+.slot-cabinet{min-width:0;padding:8px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:inset 0 1px 0 #ffffff12,0 10px 28px #020d3010}
+.slot-lights{height:14px;margin:0 8px;background:radial-gradient(circle,var(--mint) 2px,transparent 3px) 0 50%/18px 10px repeat-x}
+.slot-window{height:var(--slot-height);overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--white);box-shadow:inset 0 3px 10px #020d3020}
+.slot-track{width:100%}
+.slot-entry{height:var(--slot-height);overflow:hidden;background:var(--white)}
+.slot-entry{position:relative}
+.slot-canteen{position:absolute;z-index:1;top:10px;left:10px;right:10px;margin:0;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:14px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.slot-entry .meal-card{height:var(--slot-height);border:0;border-radius:0}
+.slot-entry .meal-photo{height:100%}
+.slot-entry .meal-photo img{object-fit:contain;transform:none}
+.slot-entry .meal-card:hover .meal-photo img{transform:none}
+.slot-entry .meal-content{position:absolute;left:0;right:0;bottom:0;padding:12px 14px;border-top:1px solid var(--line);background:rgba(255,255,255,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+[data-theme=dark] .slot-canteen,[data-theme=dark] .slot-entry .meal-content{background:rgba(20,31,51,.94)}
+.slot-entry .diet-badge{top:52px}
+.slot-entry .sold-out{top:52px;bottom:auto}
+.slot-entry .meal-category{display:none}
+.slot-entry .meal-name{-webkit-line-clamp:2}
+.slot-entry .meal-prices{padding-top:8px}
+.is-spinning .slot-canteen,.is-spinning .slot-entry .meal-content,.is-spinning .slot-entry .diet-badge,.is-spinning .slot-entry .sold-out,.is-spinning .slot-entry .no-photo span{display:none}
+.slot-confetti{position:absolute;z-index:2;inset:0;overflow:hidden;pointer-events:none;border-radius:18px}
+.slot-confetti span{position:absolute;top:75%;pointer-events:none;will-change:transform,opacity}
+.slot-lever{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:12px;width:58px;height:210px;margin-top:42px;padding:0;border:0;border-radius:12px;background:transparent;color:var(--muted)}
+.slot-lever:disabled{opacity:1}
+.slot-arm{position:relative;display:block;width:48px;height:150px}
+.slot-arm:before{content:"";position:absolute;top:20px;bottom:4px;left:14px;width:20px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:inset 0 2px 5px #020d3026}
+.slot-stem{position:absolute;width:10px;top:24px;bottom:0;left:19px;border:1px solid var(--line);border-radius:5px;background:linear-gradient(90deg,var(--muted),var(--white),var(--muted));transform-origin:50% 100%}
+.slot-knob{position:absolute;z-index:1;top:0;left:5px;width:38px;height:38px;border-radius:50%;background:var(--accent);box-shadow:inset -5px -6px 8px #020d3033,inset 4px 4px 8px #ffffff40,0 3px 8px #020d3020}
+.slot-arm:after{content:"";position:absolute;bottom:-5px;left:9px;width:30px;height:18px;border:1px solid var(--line);border-radius:7px;background:var(--surface)}
+.slot-lever-label{font-size:14px;font-weight:600}
+.slot-lever:hover:not(:disabled) .slot-knob{filter:brightness(1.12)}
+.slot-status{min-height:42px;margin:16px 0 0;font-size:14px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.is-spinning .slot-lights{animation:slot-lights .25s steps(2,end) infinite}
+@keyframes slot-lights{to{background-position:9px 50%}}
 [hidden]{display:none!important}
 @media(max-width:850px){
   .header-inner,.container{padding-left:24px;padding-right:24px}

@@ -135,6 +135,8 @@ try {
   assert(win().maxRequests <= 4, 'At most four concurrent requests');
   assert(evening.checked && evening.disabled, 'Weekly view locks Abend selection');
   assert(doc().querySelector('#start-picker').hidden, 'Single-day picker unavailable for mixed-date view');
+  assert(doc().querySelector('#start-slot').hidden && doc().querySelector('#start-slot').disabled,
+    'Single-day slot machine unavailable for mixed-date view');
   const ids = [...doc().querySelectorAll('[id]')].map((node) => node.id);
   assert(new Set(ids).size === ids.length, 'Repeated cafeterias have unique accessible IDs');
   pass('Weekdays only, no weekend requests, year boundary, evening-only data, hidden cafeterias, concurrency and unique IDs');
@@ -173,6 +175,8 @@ try {
   await ready();
   assert(!evening.disabled && !evening.checked, 'Leaving restores previous midday selection');
   assert(!doc().querySelector('.tom-day') && !doc().querySelector('#start-picker').hidden, 'Day view and picker restored');
+  assert(!doc().querySelector('#start-slot').hidden && !doc().querySelector('#start-slot').disabled,
+    'Slot machine restored with single-day meals');
   toggle.click();
   await ready();
   assert(win().requests.length === beforeCachedSwitch, 'Switching views reuses cached raw responses');

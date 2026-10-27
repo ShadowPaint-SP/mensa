@@ -67,8 +67,13 @@ try {
   assert(doc().querySelector('#start-picker')?.disabled === false, 'App initialized');
   assert(doc().querySelectorAll('.day-button').length === 5, 'Mobile shows five date tabs');
   const todayTab = doc().querySelector('.day-button.is-today');
+  const accentProbe = doc().createElement('span');
+  accentProbe.style.color = 'var(--accent)';
+  doc().body.append(accentProbe);
   assert(todayTab.getAttribute('aria-pressed') === 'true' &&
-    frame.contentWindow.getComputedStyle(todayTab).borderTopColor === 'rgb(218, 50, 28)', 'Today accent border remains visible when selected');
+    frame.contentWindow.getComputedStyle(todayTab).borderTopColor === frame.contentWindow.getComputedStyle(accentProbe).color,
+    'Today uses the active theme accent border even when selected');
+  accentProbe.remove();
   assert(!frame.contentWindow.testRequests.some((url) => url.includes('/canteens/2/')), 'Hidden cafeteria excluded');
   const route = doc().querySelector('.canteen-route');
   const routeURL = new URL(route.href);

@@ -1,4 +1,5 @@
 import { createMealPicker } from './meal-picker.js';
+import { createMealSlot } from './meal-slot.js';
 import { horizontalSwipe } from './swipe.js';
 import { isVeganMeal, isVegetarianMeal, mealTitleCodes, matchesMealFilters } from './meal-filters.js';
 import { downloadMealCalendar } from './calendar.js';
@@ -485,6 +486,11 @@ const mealPicker = createMealPicker({
   dialog: $('meal-picker'),
   renderCard: mealCard
 });
+const mealSlot = createMealSlot({
+  button: $('start-slot'),
+  dialog: $('meal-slot'),
+  renderCard: mealCard
+});
 
 function renderAdditiveOptions(meals) {
   const options = new Map();
@@ -546,6 +552,7 @@ function tomDaySection(date, entries) {
 async function loadMenus() {
   if (detailDialog.open) detailDialog.close();
   mealPicker.setMeals([]);
+  mealSlot.setMeals([]);
   const version = ++requestVersion;
   listController?.abort();
   listController = new AbortController();
@@ -627,9 +634,12 @@ async function loadMenus() {
     ...(exclusions.size ? [`Ausgeblendet: ${[...exclusions].join(', ')}`] : []),
     `${new Set(available.map(({ canteen }) => canteen.id)).size} Mensen`, `${total} Gerichte`, ...(errors ? [`${errors} nicht abrufbar`] : [])].join(' · ');
   if (!weekly) {
-    mealPicker.setMeals(entries.flatMap(({ canteen, result }) =>
+    const selectableMeals = entries.flatMap(({ canteen, result }) =>
       result.meals.map((meal) => ({ meal, canteen }))
-    ), { dateLabel, unavailableCount: errors });
+    );
+    const selectionContext = { dateLabel, unavailableCount: errors };
+    mealPicker.setMeals(selectableMeals, selectionContext);
+    mealSlot.setMeals(selectableMeals, selectionContext);
   }
 }
 
@@ -693,6 +703,7 @@ $('tom-view').addEventListener('click', () => {
   $('evening-switch').disabled = tomView;
   $('evening-switch').checked = tomView || eveningOnly;
   $('start-picker').hidden = tomView;
+  $('start-slot').hidden = tomView;
   mobileDayStart = undefined;
   renderDays();
   if (canteens.length) loadMenus();

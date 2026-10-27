@@ -82,7 +82,10 @@
       <section class="menu-area" aria-labelledby="menu-heading">
         <div class="results-heading">
           <div><h2 id="menu-heading" class="sr-only">Gerichte</h2><p id="results-summary" class="results-summary" role="status">Der Speiseplan wird geladen …</p></div>
-          <button id="start-picker" class="picker-start" type="button" disabled>♡ Gerichte swipen</button>
+          <div class="meal-tools">
+            <button id="start-slot" class="picker-start slot-start" type="button" disabled><span aria-hidden="true">✳</span> Zufallsgericht</button>
+            <button id="start-picker" class="picker-start" type="button" disabled>♡ Gerichte swipen</button>
+          </div>
         </div>
         <div id="menus" aria-busy="true"></div>
       </section>
@@ -91,6 +94,22 @@
     <dialog id="meal-picker" class="meal-picker" aria-labelledby="picker-title">
       <div class="picker-header"><h2 id="picker-title">Gerichte swipen</h2><button id="close-picker" class="picker-close" type="button" aria-label="Auswahl schließen">×</button></div>
       <div id="picker-body"></div>
+    </dialog>
+    <dialog id="meal-slot" class="meal-picker slot-dialog" aria-labelledby="slot-title">
+      <div class="picker-header"><h2 id="slot-title">Dein Zufallsgericht</h2><button class="picker-close slot-close" type="button" aria-label="Zufallsauswahl schließen">×</button></div>
+      <p class="picker-context slot-context"></p>
+      <div class="slot-machine">
+        <div class="slot-cabinet">
+          <div class="slot-lights" aria-hidden="true"></div>
+          <div class="slot-window"><div class="slot-track" aria-busy="false"></div></div>
+          <div class="slot-lights" aria-hidden="true"></div>
+        </div>
+        <button class="slot-lever" type="button" aria-label="Hebel ziehen und Zufallsgericht auswählen">
+          <span class="slot-arm" aria-hidden="true"><span class="slot-knob"></span><span class="slot-stem"></span></span>
+          <span class="slot-lever-label">Ziehen</span>
+        </button>
+      </div>
+      <p class="slot-status" role="status" aria-atomic="true"></p>
     </dialog>
     <footer class="site-footer"><div class="footer-inner"><a class="brand footer-brand" href="./">mensa<span class="brand-dot">.</span></a><a href="https://www.studentenwerk-dresden.de/mensen/speiseplan/" target="_blank" rel="noopener noreferrer">Daten & Bilder: Studentenwerk Dresden <span aria-hidden="true">↗</span></a></div><p class="footer-disclaimer">Ein unabhängiger Speiseplan. Angaben ohne Gewähr. Preise und Verfügbarkeit können sich ändern.</p></footer>
   </body>
