@@ -11,7 +11,7 @@ function initialMenuSelection(date) {
   const today = `${parts.year}-${parts.month}-${parts.day}`;
   const timeParts = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: 'numeric', hourCycle: 'h23' }).formatToParts(date);
   const hour = Number(timeParts.find(({ type }) => type === 'hour').value);
-  return { today, date: hour >= 19 ? shiftDate(today, 1) : today, evening: hour >= 15 && hour < 19 };
+  return { today, date: weekdayOnOrAfter(hour >= 19 ? shiftDate(today, 1) : today), evening: hour >= 15 && hour < 19 };
 }
 const initialSelection = initialMenuSelection(new Date());
 const today = initialSelection.today;
@@ -26,8 +26,24 @@ function isVeganMeal(meal) {
   return Array.isArray(meal.notes) && meal.notes.some((note) => typeof note === 'string' && /^Menü ist vegan$/i.test(note.trim()));
 }
 
+function isVegetarianMeal(meal) {
+  return isVeganMeal(meal) || (Array.isArray(meal.notes) &&
+    meal.notes.some((note) => typeof note === 'string' && /^Menü ist vegetarisch$/i.test(note.trim())));
+}
+
+const dietaryFilters = {
+  vegan: { label: 'vegan', matches: isVeganMeal },
+  vegetarian: { label: 'vegetarisch', matches: isVegetarianMeal },
+};
+
+function matchesDietarySelection(meal, selection) {
+  return Object.entries(selection).every(([type, mode]) =>
+    mode === 'all' || dietaryFilters[type].matches(meal) === (mode === 'only')
+  );
+}
+
 let eveningOnly = initialSelection.evening;
-let veganOnly = false;
+const dietarySelection = { vegan: 'all', vegetarian: 'all' };
 let priceCategory = 'student';
 const priceCategories = {
   student: { label: 'Student', keys: ['Studierende', 'students'] },
@@ -65,6 +81,22 @@ function shiftDate(iso, days) {
   return isoDate(date);
 }
 
+function weekdayOnOrAfter(iso) {
+  const day = asDate(iso).getUTCDay();
+  return day === 6 ? shiftDate(iso, 2) : day === 0 ? shiftDate(iso, 1) : iso;
+}
+
+function shiftWeekdays(iso, days) {
+  const direction = Math.sign(days);
+  let remaining = Math.abs(days);
+  while (remaining > 0) {
+    iso = shiftDate(iso, direction);
+    const weekday = asDate(iso).getUTCDay();
+    if (weekday !== 0 && weekday !== 6) remaining--;
+  }
+  return iso;
+}
+
 function renderDays() {
   dayAnimations.forEach((animation) => animation.cancel());
   dayAnimations = [];
@@ -73,15 +105,15 @@ function renderDays() {
   $('date-input').value = selectedDate;
   const weekday = (asDate(selectedDate).getUTCDay() + 6) % 7;
   const monday = shiftDate(selectedDate, -weekday);
-  const dayCount = mobileMeals.matches ? 5 : 7;
+  const dayCount = 5;
   // Initialize around the selected date; browsing the strip does not select a day.
-  if (!mobileDayStart) mobileDayStart = shiftDate(monday, Math.max(0, weekday - 4));
+  if (!mobileDayStart) mobileDayStart = monday;
   const start = mobileMeals.matches ? mobileDayStart : monday;
-  $('previous-week').setAttribute('aria-label', mobileMeals.matches ? 'Vorheriger Tag' : 'Vorherige Woche');
-  $('next-week').setAttribute('aria-label', mobileMeals.matches ? 'Nächster Tag' : 'Nächste Woche');
+  $('previous-week').setAttribute('aria-label', mobileMeals.matches ? 'Vorheriger Wochentag' : 'Vorherige Woche');
+  $('next-week').setAttribute('aria-label', mobileMeals.matches ? 'Nächster Wochentag' : 'Nächste Woche');
   $('week-days').replaceChildren();
   for (let i = 0; i < dayCount; i++) {
-    const iso = shiftDate(start, i);
+    const iso = shiftWeekdays(start, i);
     const date = asDate(iso);
     const button = element('button', `day-button${iso === today ? ' is-today' : ''}`);
     button.type = 'button';
@@ -98,8 +130,8 @@ function renderDays() {
 
 function changeDate(iso) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || !Number.isFinite(asDate(iso).getTime())) return;
-  selectedDate = iso;
-  if (mobileDayStart && (iso < mobileDayStart || iso > shiftDate(mobileDayStart, 4))) mobileDayStart = undefined;
+  selectedDate = weekdayOnOrAfter(iso);
+  if (mobileDayStart && (selectedDate < mobileDayStart || selectedDate > shiftWeekdays(mobileDayStart, 4))) mobileDayStart = undefined;
   renderDays();
   if (canteens.length) loadMenus();
 }
@@ -115,7 +147,7 @@ function navigateDays(offset, dragOffset = 0) {
   oldPage.classList.add('day-snapshot');
   oldPage.inert = true;
   oldPage.setAttribute('aria-hidden', 'true');
-  mobileDayStart = shiftDate(mobileDayStart, offset);
+  mobileDayStart = shiftWeekdays(mobileDayStart, offset);
   renderDays();
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const width = $('day-viewport').clientWidth;
@@ -274,13 +306,13 @@ function mealCard(meal, { full = false } = {}) {
     const image = element('img');
     image.src = imageUrl;
     image.alt = meal.name;
-    image.loading = 'lazy';
+    image.loading = full ? 'eager' : 'lazy';
     image.decoding = 'async';
     image.addEventListener('error', () => image.replaceWith(photoPlaceholder()), { once: true });
     photo.append(image);
   } else photo.append(photoPlaceholder());
   const vegan = isVeganMeal(meal);
-  const vegetarian = notes.some((note) => /Menü ist vegetarisch/i.test(note));
+  const vegetarian = isVegetarianMeal(meal);
   if (vegan || vegetarian) photo.append(element('span', `diet-badge${vegan ? '' : ' vegetarian'}`, vegan ? '♧ Vegan' : '♧ Vegetarisch'));
   if (meal.soldout) photo.append(element('span', 'sold-out', 'Ausverkauft'));
   const content = element('div', 'meal-content');
@@ -306,6 +338,10 @@ function mealCard(meal, { full = false } = {}) {
     details.type = 'button';
     details.addEventListener('click', () => showMealDetails(meal));
     content.append(details);
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('button,a,input,select,textarea,summary,details')) return;
+      showMealDetails(meal);
+    });
   }
   card.append(photo, content);
   return card;
@@ -400,6 +436,8 @@ function canteenSection(canteen, result) {
     let dragOrigin = 0;
     horizontalSwipe(viewport, {
       enabled: () => mobileMeals.matches,
+      // A tap should reach the card; capture only once it becomes a swipe.
+      captureOnStart: false,
       onStart() {
         // Freeze an in-progress slide at its visual position before following the finger.
         dragOrigin = new DOMMatrixReadOnly(getComputedStyle(track).transform).m41;
@@ -473,7 +511,7 @@ async function loadMenus() {
   container.append(loading);
   const date = selectedDate;
   const evening = eveningOnly;
-  const vegan = veganOnly;
+  const diet = { ...dietarySelection };
   // Limit concurrent API requests, while preserving the official cafeteria order.
   const results = new Array(visible.length);
   let cursor = 0;
@@ -488,7 +526,7 @@ async function loadMenus() {
           meals = (await fetchArray(`${API}/canteens/${visible[index].id}/days/${date}/meals`, signal)).data;
           menuCache.set(key, { meals, time: Date.now() });
         }
-        results[index] = { meals: meals.filter((meal) => isEveningMeal(meal) === evening && (!vegan || isVeganMeal(meal))) };
+        results[index] = { meals: meals.filter((meal) => isEveningMeal(meal) === evening && matchesDietarySelection(meal, diet)) };
       } catch (error) {
         if (signal.aborted) return;
         results[index] = { meals: [], error: true };
@@ -502,7 +540,7 @@ async function loadMenus() {
   container.replaceChildren(...available.map(({ canteen, result }) => canteenSection(canteen, result)));
   if (!available.length) {
     container.append(message(
-      vegan ? (evening ? 'Keine veganen Abendangebote' : 'Keine veganen Mittagsgerichte') : (evening ? 'Keine Abendangebote' : 'Keine Mittagsgerichte'),
+      evening ? 'Keine passenden Abendangebote' : 'Keine passenden Mittagsgerichte',
       'Für die ausgewählten Mensen und diesen Tag sind keine passenden Gerichte veröffentlicht. Ändere die Filter, den Tag oder die Mensa-Auswahl.'
     ));
   }
@@ -510,7 +548,10 @@ async function loadMenus() {
   const total = results.reduce((sum, result) => sum + result.meals.length, 0);
   const errors = results.filter((result) => result.error).length;
   const dateLabel = asDate(date).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-  $('results-summary').textContent = `${dateLabel} · ${evening ? 'Abend' : 'Mittag'}${vegan ? ' · Vegan' : ''} · ${available.length} Mensen · ${total} Gerichte${errors ? ` · ${errors} nicht abrufbar` : ''}`;
+  const dietarySummary = Object.entries(diet).filter(([, mode]) => mode !== 'all')
+    .map(([type, mode]) => mode === 'only' ? `Nur ${dietaryFilters[type].label}` : `${dietaryFilters[type].label} ausgeblendet`);
+  $('results-summary').textContent = [dateLabel, evening ? 'Abend' : 'Mittag', ...dietarySummary,
+    `${available.length} Mensen`, `${total} Gerichte`, ...(errors ? [`${errors} nicht abrufbar`] : [])].join(' · ');
   mealPicker.setMeals(visible.flatMap((canteen, i) =>
     results[i].meals.map((meal) => ({ meal, canteen }))
   ), { dateLabel, unavailableCount: errors });
@@ -549,11 +590,13 @@ $('price-category').addEventListener('change', (event) => {
     renderMealPrice(container, priceSources.get(container));
   });
 });
-$('vegan-filter').checked = veganOnly;
-$('vegan-filter').addEventListener('change', (event) => {
-  veganOnly = event.target.checked;
-  if (canteens.length) loadMenus();
-});
+for (const type of Object.keys(dietaryFilters)) {
+  $(`${type}-filter`).addEventListener('change', (event) => {
+    if (!['all', 'only', 'hide'].includes(event.target.value)) return;
+    dietarySelection[type] = event.target.value;
+    if (canteens.length) loadMenus();
+  });
+}
 $('evening-switch').checked = eveningOnly;
 $('evening-switch').addEventListener('change', (event) => {
   eveningOnly = event.target.checked;

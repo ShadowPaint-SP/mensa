@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#ffffff">
+    <meta name="color-scheme" content="light dark">
     <meta name="description" content="Dein Mensa-Speiseplan für Dresden, Tharandt, Zittau und Görlitz. Alle Gerichte, echte Bilder und deine Lieblingsmensen auf einen Blick.">
     <title>mensa. — Was gibt’s heute?</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <script src="./theme.js"></script>
     <link rel="stylesheet" href="./styles.css">
     <script type="module" src="./app.js"></script>
   </head>
@@ -16,6 +18,10 @@
       <div class="header-inner">
         <a class="brand" href="./" aria-label="mensa. Startseite">mensa<span class="brand-dot">.</span></a>
         <span class="header-location">Speiseplan · Dresden & Umgebung</span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Dunkelmodus" aria-pressed="false" title="Dunklen Modus aktivieren">
+          <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8.5 8.5 0 0 1 10 4 8.5 8.5 0 1 0 20 14Z"/></svg>
+          <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+        </button>
       </div>
     </header>
     <main class="container">
@@ -27,7 +33,7 @@
             <div id="day-viewport" class="day-viewport"><div id="week-days" class="week-days" aria-label="Tag auswählen"></div></div>
             <button id="next-week" class="week-arrow" aria-label="Nächste Woche">›</button>
           </div>
-          <input id="date-input" type="date" aria-label="Datum des Speiseplans wählen">
+          <input id="date-input" type="date" aria-label="Datum des Speiseplans wählen" title="Montag bis Freitag. Wochenenddaten werden auf Montag verschoben.">
         </div>
         <div class="filter-toolbar">
           <details class="cafeteria-filter">
@@ -44,7 +50,23 @@
               <label><input type="radio" name="price-category" value="employee"><span>Bediensteter</span></label>
               <label><input type="radio" name="price-category" value="guest"><span>Gäste</span></label>
             </fieldset>
-            <label class="vegan-filter"><input id="vegan-filter" type="checkbox">Vegan</label>
+            <div class="dietary-control">
+              <span id="vegan-label">Vegan</span>
+              <fieldset id="vegan-filter" class="dietary-options" aria-labelledby="vegan-label">
+                <label title="Vegan: keine Einschränkung"><input type="radio" name="vegan-filter" value="all" aria-label="Vegan: keine Einschränkung" checked><span aria-hidden="true">×</span></label>
+                <label title="Nur vegane Gerichte"><input type="radio" name="vegan-filter" value="only" aria-label="Nur vegane Gerichte"><span aria-hidden="true">✓</span></label>
+                <label title="Vegane Gerichte ausblenden"><input type="radio" name="vegan-filter" value="hide" aria-label="Vegane Gerichte ausblenden"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11 11 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.1 3.8M6.5 6.5A20 20 0 0 0 2 12s4 7 10 7a11 11 0 0 0 5.5-1.5"/></svg></span></label>
+              </fieldset>
+            </div>
+            <div class="dietary-control">
+              <span id="vegetarian-label">Vegetarisch</span>
+              <fieldset id="vegetarian-filter" class="dietary-options" aria-labelledby="vegetarian-label" aria-describedby="dietary-hint">
+                <label title="Vegetarisch: keine Einschränkung"><input type="radio" name="vegetarian-filter" value="all" aria-label="Vegetarisch: keine Einschränkung" checked><span aria-hidden="true">×</span></label>
+                <label title="Nur vegetarische Gerichte (inklusive vegan)"><input type="radio" name="vegetarian-filter" value="only" aria-label="Nur vegetarische Gerichte (inklusive vegan)"><span aria-hidden="true">✓</span></label>
+                <label title="Vegetarische und vegane Gerichte ausblenden"><input type="radio" name="vegetarian-filter" value="hide" aria-label="Vegetarische und vegane Gerichte ausblenden"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11 11 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.1 3.8M6.5 6.5A20 20 0 0 0 2 12s4 7 10 7a11 11 0 0 0 5.5-1.5"/></svg></span></label>
+              </fieldset>
+              <span id="dietary-hint" class="sr-only">Vegetarisch schließt vegane Gerichte ein. Beide Filter gelten gleichzeitig und verwenden die Kennzeichnungen des Studentenwerks.</span>
+            </div>
             <label class="meal-period">
               <input id="evening-switch" type="checkbox" role="switch" aria-label="Abendmenüs statt Mittagsmenüs anzeigen">
               <span class="period-highlight" aria-hidden="true"></span>

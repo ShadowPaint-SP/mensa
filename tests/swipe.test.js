@@ -35,7 +35,11 @@ try {
       });
       const data = url.endsWith('/canteens')
         ? [{id:1,name:'Selected A',address:'Bergstraße 51, 01069 Dresden'},{id:2,name:'Hidden B'},{id:3,name:'Selected C'}]
-        : url.includes('/canteens/1/') ? [meal(1),meal(2),meal(3),meal(4),evening(90,true),evening(91,false)] : [meal(5)];
+        : url.includes('/canteens/1/') ? [
+          meal(1),meal(2),meal(3),meal(4),evening(90,true),
+          {...evening(91,false),notes:[null,42,'Menü ist vegan möglich']},
+          {...evening(92,false),notes:[' Menü ist vegetarisch ']}
+        ] : [meal(5)];
       return new Response(JSON.stringify(data), {status:200,headers:{'Content-Type':'application/json'}});
     };
   `;
@@ -85,7 +89,7 @@ try {
     surface.hasPointerCapture = () => captured;
     surface.releasePointerCapture = () => { captured = false; };
     pointer(target, 'pointerdown', 150);
-    assert(captured, 'Surface captures immediately on pointerdown');
+    assert(!captured, 'Card taps keep native targeting until a horizontal drag starts');
   }
   const translation = (target) => new frame.contentWindow.DOMMatrixReadOnly(
     frame.contentWindow.getComputedStyle(target).transform
@@ -94,6 +98,7 @@ try {
   begin(viewport, text);
   pointer(text, 'lostpointercapture', 150);
   pointer(viewport, 'pointermove', 110);
+  assert(viewport.hasPointerCapture(7), 'Horizontal drag captures on the stable viewport');
   assert(Math.abs(translation(track) + 40) < 1, 'Track follows finger by 40px after child capture loss');
   pointer(viewport, 'pointermove', 50);
   assert(Math.abs(translation(track) + 100) < 1, 'Track follows finger by 100px before release');
@@ -101,6 +106,10 @@ try {
   pointer(viewport, 'pointerup', 50);
   await wait(460);
   assert(status.textContent === '2–2 von 4', 'Release advances exactly one meal');
+  track.querySelector('.meal-card').dispatchEvent(new frame.contentWindow.MouseEvent('click', {
+    bubbles: true, cancelable: true, detail: 1
+  }));
+  assert(!doc().querySelector('.picker-detail').open, 'Swipe-generated click does not open details');
   assert(section.querySelector('.meal-navigation').getBoundingClientRect().top === cardTop, 'Stable navigation');
   begin(viewport);
   const origin = translation(track);
@@ -132,9 +141,28 @@ try {
   const detail = doc().querySelector('.picker-detail');
   assert(detail.open && detail.querySelector('.meal-name').textContent.length > 1000, 'Full description accessible');
   assert(detail.querySelectorAll('li').length === 31, 'All notes accessible');
+  // Local image fixtures exercise intrinsic sizing without any external photo requests.
+  for (const [width, height] of [[600, 900], [1200, 400]]) {
+    const image = doc().createElement('img');
+    image.alt = 'Test meal';
+    image.src = 'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#A0D7B8"/></svg>`
+    );
+    detail.querySelector('.meal-photo').replaceChildren(image);
+    await image.decode();
+    const rect = image.getBoundingClientRect();
+    assert(Math.abs(rect.width / rect.height - width / height) < .01, 'Full photo preserves natural aspect ratio');
+    assert(Math.abs(detail.querySelector('.meal-photo').getBoundingClientRect().height - rect.height) < 1, 'Full photo is not cropped by its container');
+    assert(frame.contentWindow.getComputedStyle(image).transform === 'none', 'Details photo has no cropping hover zoom');
+  }
   detail.querySelector('button').click();
   await wait();
-  pass('No main-card scrolling; complete text and allergens in details');
+  for (const target of [track.querySelector('.meal-photo'), content.querySelector('.meal-name'), track.querySelector('.meal-card')]) {
+    target.click();
+    assert(detail.open, 'Photo, text and card background open the details popup');
+    detail.querySelector('.picker-close').click();
+  }
+  pass('Full uncropped portrait/landscape photos; card-wide details access; original details button preserved');
 
   const requestCount = frame.contentWindow.testRequests.length;
   const pageBeforePriceChange = status.textContent;
@@ -165,6 +193,9 @@ try {
   assert(nextPreview.inert && nextPreview.getAttribute('aria-hidden') === 'true', 'Preview cannot be voted or keyboard-focused');
   assert(nextPreview.getBoundingClientRect().top === firstCard.getBoundingClientRect().top, 'Next meal is positioned directly beneath current card');
   assert(frame.contentWindow.getComputedStyle(nextPreview).pointerEvents === 'none', 'Preview does not intercept dragging');
+  firstCard.querySelector('.meal-photo').click();
+  assert(detail.open, 'Voting-card tap also opens full details');
+  detail.querySelector('.picker-close').click();
   begin(firstCard, firstCard.querySelector('.meal-name'));
   pointer(firstCard.querySelector('.meal-name'), 'lostpointercapture', 150);
   pointer(firstCard, 'pointermove', 210);
@@ -173,6 +204,10 @@ try {
   assert(Math.abs(translation(firstCard) - 120) < 1, 'Voting card tracks further finger movement');
   assert(nextPreview.getBoundingClientRect().left < firstCard.getBoundingClientRect().left, 'Next meal stays in place while current card moves away');
   pointer(firstCard, 'pointerup', 270);
+  firstCard.dispatchEvent(new frame.contentWindow.MouseEvent('click', {
+    bubbles: true, cancelable: true, detail: 1
+  }));
+  assert(!detail.open, 'Voting swipe does not open details');
   firstCard.getAnimations().forEach((animation) => animation.finish());
   await wait();
   assert(body.querySelector('.picker-progress').textContent === '2 von 5 · 1 geliked', 'Right swipe likes once');
@@ -214,7 +249,9 @@ try {
   frame.height = 900;
   await wait(100);
   assert(track.children[0].children.length === 3, 'Desktop three-meal groups preserved');
-  assert(doc().querySelectorAll('.day-button').length === 7, 'Desktop shows seven date tabs');
+  assert(doc().querySelectorAll('.day-button').length === 5, 'Desktop shows five weekday tabs');
+  assert([...doc().querySelectorAll('.day-button')].every((day) =>
+    ![0, 6].includes(new Date(day.dataset.date + 'T12:00:00Z').getUTCDay())), 'Desktop excludes weekends');
   pass('Desktop grouping preserved');
   frame.width = 390;
   frame.height = 844;
@@ -247,20 +284,73 @@ try {
   pass('iPhone uses Apple Maps while Android uses Google Maps');
   assert(doc().querySelectorAll('.canteen-section').length === 1, 'Only cafeteria with evening meals remains');
   doc().querySelector('#start-picker').click();
-  assert(body.querySelector('.picker-progress').textContent.startsWith('1 von 2'), 'Picker uses only evening meals');
+  assert(body.querySelector('.picker-progress').textContent.startsWith('1 von 3'), 'Picker uses only evening meals');
   assert(body.querySelector('.meal-name').textContent === 'Abendangebot: Meal 90', 'Picker contains evening dish');
   doc().querySelector('#close-picker').click();
-  const veganFilter = doc().querySelector('#vegan-filter');
-  veganFilter.checked = true;
-  veganFilter.dispatchEvent(new frame.contentWindow.Event('change'));
-  await wait();
-  doc().querySelector('#start-picker').click();
-  assert(body.querySelector('.picker-progress').textContent.startsWith('1 von 1'), 'Picker combines evening and vegan filters');
-  doc().querySelector('#close-picker').click();
+  assert(doc().querySelector('input[name="vegan-filter"]:checked').value === 'all' &&
+    doc().querySelector('input[name="vegetarian-filter"]:checked').value === 'all', 'Both dietary controls default to no restriction');
+  for (const input of doc().querySelectorAll('.dietary-options input')) {
+    assert(input.getAttribute('aria-label') === input.parentElement.title && input.parentElement.title.length > 10,
+      'Symbol controls have descriptive German tooltips and accessible labels');
+    assert(input.nextElementSibling.getAttribute('aria-hidden') === 'true', 'Decorative symbols do not replace accessible names');
+    const symbol = input.nextElementSibling;
+    if (input.value === 'hide') {
+      assert(symbol.querySelector('svg path')?.getAttribute('d').startsWith('m3 3 18 18'), 'Hide uses crossed-out eye SVG');
+    } else {
+      assert(symbol.textContent === (input.value === 'all' ? '×' : '✓'), 'Unrestricted and only modes use requested symbols');
+    }
+  }
+  const requestsBeforeDietChanges = frame.contentWindow.testRequests.length;
+  const diets = [
+    ['all', 'all', [90,91,92]],
+    ['all', 'only', [90,92]],
+    ['all', 'hide', [91]],
+    ['only', 'only', [90]],
+    ['only', 'hide', []],
+    ['hide', 'only', [92]],
+    ['hide', 'hide', [91]],
+    ['hide', 'all', [91,92]],
+    ['only', 'all', [90]]
+  ];
+  for (const [veganMode, vegetarianMode, ids] of diets) {
+    doc().querySelector(`input[name="vegan-filter"][value="${veganMode}"]`).click();
+    doc().querySelector(`input[name="vegetarian-filter"][value="${vegetarianMode}"]`).click();
+    await wait();
+    const mode = `${veganMode}/${vegetarianMode}`;
+    const names = [...doc().querySelectorAll('#menus .meal-name')].map((name) => name.textContent);
+    assert(JSON.stringify(names) === JSON.stringify(ids.map((id) => 'Abendangebot: Meal ' + id)), `Diet ${mode} filters the browser correctly`);
+    assert(doc().querySelector('#evening-switch').checked, `Diet ${mode} preserves evening filter`);
+    assert(doc().querySelector('input[name="price-category"]:checked').value === 'employee', `Diet ${mode} preserves price category`);
+    if (ids.length) {
+      doc().querySelector('#start-picker').click();
+      assert(body.querySelector('.picker-progress').textContent.startsWith(`1 von ${ids.length}`), `Picker combines evening and ${mode} filters`);
+      assert(body.querySelector('.meal-name').textContent === 'Abendangebot: Meal ' + ids[0], `Picker starts with matching ${mode} meal`);
+      doc().querySelector('#close-picker').click();
+    } else {
+      assert(doc().querySelector('#start-picker').disabled && doc().querySelector('#menus .message'), 'Contradictory filters produce clear empty state and disable picker');
+      assert(doc().querySelector('input[name="vegan-filter"]:checked').value === veganMode &&
+        doc().querySelector('input[name="vegetarian-filter"]:checked').value === vegetarianMode, 'Contradictory selections are not silently reset');
+    }
+  }
+  assert(frame.contentWindow.testRequests.length === requestsBeforeDietChanges, 'All dietary modes reuse cached raw menus');
+  for (const width of [320,390,768,1200]) {
+    frame.width = width;
+    await wait(100);
+    assert(doc().documentElement.scrollWidth <= width, `Dietary controls fit ${width}px viewport`);
+    const controls = [...doc().querySelectorAll('.quick-filters > fieldset,.quick-filters > .dietary-control,.quick-filters > .meal-period')];
+    for (let i = 0; i < controls.length; i++) {
+      for (let j = i + 1; j < controls.length; j++) {
+        const a = controls[i].getBoundingClientRect(), b = controls[j].getBoundingClientRect();
+        assert(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top, `Filter controls do not overlap at ${width}px`);
+      }
+    }
+  }
+  frame.width = 390;
+  await wait(100);
   doc().querySelector('.cafeteria-chip[data-id="1"]').click();
   await wait();
   assert(doc().querySelector('#start-picker').disabled, 'No picker meals after matching cafeteria is hidden');
-  pass('Picker respects evening, vegan and cafeteria filters together');
+  pass('All nine segmented dietary combinations, vegetarian includes vegan, empty-state handling, malformed labels, cached responses, responsive controls and picker/filter combinations');
   // Restore normal motion after the reduced-motion checks.
   reducedMotionRule.media.mediaText = '(prefers-reduced-motion: reduce)';
   const daySurface = doc().querySelector('#day-viewport');
@@ -272,7 +362,10 @@ try {
   const firstDate = () => dayGrid.firstElementChild.dataset.date;
   const shiftISO = (iso, count) => {
     const date = new Date(iso + 'T12:00:00Z');
-    date.setUTCDate(date.getUTCDate() + count);
+    for (let i = 0; i < Math.abs(count);) {
+      date.setUTCDate(date.getUTCDate() + Math.sign(count));
+      if (![0, 6].includes(date.getUTCDay())) i++;
+    }
     return date.toISOString().slice(0, 10);
   };
   const settleDays = async () => {
@@ -288,7 +381,7 @@ try {
   assert(dayCaptured && Math.abs(translation(dayGrid) + 80) < 1, 'Date strip follows finger and captures horizontal drag');
   pointer(daySurface, 'pointerup', 70);
   await settleDays();
-  assert(firstDate() === shiftISO(originalFirst, 5), 'Left date swipe advances five days');
+  assert(firstDate() === shiftISO(originalFirst, 5), 'Left date swipe advances five weekdays');
   doc().querySelector('#next-week').click();
   await settleDays();
   assert(firstDate() === shiftISO(originalFirst, 6), 'Next arrow advances only one day');
@@ -315,17 +408,32 @@ try {
   dayGrid.firstElementChild.click();
   await wait();
   assert(doc().querySelector('#date-input').value === tappedDate, 'Date buttons remain tappable after swiping');
-  pass('Date strip tracks finger; swipes move five days, arrows one; taps, cancellation and vertical gestures preserved');
+  pass('Date strip tracks finger; swipes move five weekdays, arrows one; taps, cancellation and vertical gestures preserved');
   const dateInput = doc().querySelector('#date-input');
   for (const date of ['2026-10-24', '2026-10-25', '2026-10-26']) {
     dateInput.value = date;
     dateInput.dispatchEvent(new frame.contentWindow.Event('change'));
     await wait();
     const days = doc().querySelectorAll('.day-button');
-    assert(days.length === 5, 'Five tabs even for weekend selection');
-    assert([...days].filter((day) => day.getAttribute('aria-pressed') === 'true').length === 1, 'Selected weekend or weekday remains visible');
+    assert(dateInput.value === '2026-10-26', 'Weekend selections advance to Monday');
+    assert(days.length === 5, 'Five weekday tabs after weekend selection');
+    assert([...days].every((day) => ![0, 6].includes(new Date(day.dataset.date + 'T12:00:00Z').getUTCDay())), 'No weekend tabs');
+    assert([...days].filter((day) => day.getAttribute('aria-pressed') === 'true').length === 1, 'Selected weekday remains visible');
   }
-  pass('Five-day mobile navigation preserves selected weekends and weekdays');
+  dateInput.value = '2026-10-23';
+  dateInput.dispatchEvent(new frame.contentWindow.Event('change'));
+  await wait();
+  for (let i = 0; i < 5; i++) {
+    doc().querySelector('#next-week').click();
+    await settleDays();
+  }
+  assert(firstDate() === '2026-10-26', 'Mobile arrows skip Saturday and Sunday');
+  assert([...dayGrid.children].every((day) =>
+    ![0, 6].includes(new Date(day.dataset.date + 'T12:00:00Z').getUTCDay())), 'Mobile strip remains weekday-only across week boundary');
+  doc().querySelector('#previous-week').click();
+  await settleDays();
+  assert(firstDate() === '2026-10-23', 'Reverse arrow skips back from Monday to Friday');
+  pass('Weekday-only navigation, weekend date-picker normalization, forward/reverse weekend skipping');
   const defaultCases = [
     ['2026-01-15T13:59:59Z', '2026-01-15', false],
     ['2026-01-15T14:00:00Z', '2026-01-15', true],
@@ -337,9 +445,11 @@ try {
     ['2026-07-15T17:00:00Z', '2026-07-16', false],
     ['2026-12-31T18:00:00Z', '2027-01-01', false],
     ['2028-02-28T18:00:00Z', '2028-02-29', false],
-    ['2026-03-28T18:00:00Z', '2026-03-29', false],
-    ['2026-10-24T17:00:00Z', '2026-10-25', false],
-    ['2026-01-16T18:00:00Z', '2026-01-17', false],
+    ['2026-03-28T18:00:00Z', '2026-03-30', false],
+    ['2026-10-24T17:00:00Z', '2026-10-26', false],
+    ['2026-01-16T18:00:00Z', '2026-01-19', false],
+    ['2026-01-17T10:00:00Z', '2026-01-19', false],
+    ['2026-01-18T10:00:00Z', '2026-01-19', false],
     ['2026-07-15T22:00:00Z', '2026-07-16', false]
   ];
   for (const [instant, expectedDate, expectedEvening] of defaultCases) {

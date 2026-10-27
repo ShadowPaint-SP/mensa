@@ -139,6 +139,7 @@ export function createMealPicker({ button, dialog, renderCard }) {
     let dragOrigin = 0;
     horizontalSwipe(card, {
       enabled: () => !busy,
+      captureOnStart: false,
       onStart() {
         dragOrigin = new DOMMatrixReadOnly(getComputedStyle(card).transform).m41;
         settleAnimation?.cancel();
