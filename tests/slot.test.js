@@ -53,6 +53,12 @@ try {
   const doc = () => frame.contentDocument;
   const win = () => frame.contentWindow;
   for (let i = 0; i < 200; i++) {
+    if (doc()?.querySelector('#results-summary')?.textContent.includes('Gerichte')) break;
+    await wait();
+  }
+  assert(doc().querySelector('#results-summary')?.textContent.includes('Gerichte'), 'App initialized in the default Tom-View');
+  doc().querySelector('#tom-view').click();
+  for (let i = 0; i < 200; i++) {
     if (doc()?.querySelector('#start-slot')?.disabled === false) break;
     await wait();
   }

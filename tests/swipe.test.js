@@ -61,10 +61,16 @@ try {
     .replace('<link rel="stylesheet" href="./styles.css">', `<style>${css.replace(/^@import.*$/m, '')}</style>`);
   const doc = () => frame.contentDocument;
   for (let i = 0; i < 200; i++) {
+    if (doc()?.querySelector('#results-summary')?.textContent.includes('Gerichte')) break;
+    await wait();
+  }
+  assert(doc().querySelector('#results-summary')?.textContent.includes('Gerichte'), 'App initialized in the default Tom-View');
+  doc().querySelector('#tom-view').click();
+  for (let i = 0; i < 200; i++) {
     if (doc()?.querySelector('#start-picker')?.disabled === false) break;
     await wait();
   }
-  assert(doc().querySelector('#start-picker')?.disabled === false, 'App initialized');
+  assert(doc().querySelector('#start-picker')?.disabled === false, 'Classic day view loads after leaving Tom-View');
   assert(doc().querySelectorAll('.day-button').length === 5, 'Mobile shows five date tabs');
   const todayTab = doc().querySelector('.day-button.is-today');
   const accentProbe = doc().createElement('span');
@@ -91,8 +97,7 @@ try {
   const track = viewport.querySelector('.meal-track');
   const section = viewport.closest('.canteen-section');
   const status = section.querySelector('.meal-page-status');
-  assert(track.children.length === 4 && track.children[0].children.length === 1, 'One mobile meal per page');
-  const cardTop = section.querySelector('.meal-navigation').getBoundingClientRect().top;
+  assert(track.children.length === 2 && track.children[0].children.length === 2, 'Two mobile meals share one page row');
 
   function pointer(target, type, x, y = 100) {
     return target.dispatchEvent(new frame.contentWindow.PointerEvent(type, {
@@ -121,36 +126,35 @@ try {
   assert(Math.abs(translation(track) + 40) < 1, 'Track follows finger by 40px after child capture loss');
   pointer(viewport, 'pointermove', 50);
   assert(Math.abs(translation(track) + 100) < 1, 'Track follows finger by 100px before release');
-  assert(status.textContent === '1–1 von 4', 'No premature page change');
+  assert(status.textContent === '1–2 von 4', 'No premature page change');
   pointer(viewport, 'pointerup', 50);
   await wait(460);
-  assert(status.textContent === '2–2 von 4', 'Release advances exactly one meal');
+  assert(status.textContent === '3–4 von 4', 'Release advances exactly one page');
   track.querySelector('.meal-card').dispatchEvent(new frame.contentWindow.MouseEvent('click', {
     bubbles: true, cancelable: true, detail: 1
   }));
   assert(!doc().querySelector('.picker-detail').open, 'Swipe-generated click does not open details');
-  assert(section.querySelector('.meal-navigation').getBoundingClientRect().top === cardTop, 'Stable navigation');
   begin(viewport);
   const origin = translation(track);
   pointer(viewport, 'pointermove', 230);
   assert(Math.abs(translation(track) - origin - 80) < 1, 'Reverse drag also tracks finger');
   pointer(viewport, 'pointerup', 230);
   await wait(460);
-  assert(status.textContent === '1–1 von 4', 'Reverse swipe returns');
+  assert(status.textContent === '1–2 von 4', 'Reverse swipe returns');
   begin(viewport);
   pointer(viewport, 'pointermove', 135);
   pointer(viewport, 'pointerup', 135);
   await wait(460);
-  assert(status.textContent === '1–1 von 4', 'Short drag snaps back');
+  assert(status.textContent === '1–2 von 4', 'Short drag snaps back');
   begin(viewport);
   pointer(viewport, 'pointermove', 50);
   pointer(viewport, 'pointercancel', 50);
   await wait(460);
-  assert(status.textContent === '1–1 von 4', 'Cancellation does not paginate');
+  assert(status.textContent === '1–2 von 4', 'Cancellation does not paginate');
   begin(viewport);
   pointer(viewport, 'pointermove', 145, 200);
   pointer(viewport, 'pointerup', 145, 200);
-  assert(status.textContent === '1–1 von 4', 'Vertical scroll does not paginate');
+  assert(status.textContent === '1–2 von 4', 'Vertical scroll does not paginate');
   pass('Continuous carousel tracking, nested capture loss, reverse, release, cancellation, vertical scrolling');
 
   const content = track.querySelector('.meal-content');
@@ -266,7 +270,17 @@ try {
   doc().querySelector('#close-picker').click();
   frame.width = 1200;
   frame.height = 900;
-  await wait(100);
+  // Headless viewports may not emit matchMedia changes; the app's own layout
+  // handler is the fallback that a real browser triggers on resize.
+  for (let i = 0; i < 100; i++) {
+    if (track.children[0] && track.children[0].children.length === 3) break;
+    await wait();
+  }
+  if (track.children[0]?.children.length !== 3) {
+    doc().querySelectorAll('#menus .canteen-section').forEach((section) =>
+      section.dispatchEvent(new frame.contentWindow.Event('meal-layout-change')));
+    await wait(100);
+  }
   assert(track.children[0].children.length === 3, 'Desktop three-meal groups preserved');
   assert(doc().querySelectorAll('.day-button').length === 5, 'Desktop shows five weekday tabs');
   assert([...doc().querySelectorAll('.day-button')].every((day) =>

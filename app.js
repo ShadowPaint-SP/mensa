@@ -393,7 +393,7 @@ function canteenSection(canteen, result, date) {
     const track = element('div', 'meal-track');
     viewport.append(track);
     section.append(viewport);
-    let pageSize = mobileMeals.matches ? 1 : 3;
+    let pageSize = mobileMeals.matches ? 2 : 3;
     const pages = [];
     function buildPages() {
       pages.length = 0;
@@ -466,7 +466,7 @@ function canteenSection(canteen, result, date) {
     });
     section.addEventListener('meal-layout-change', () => {
       const firstMeal = page * pageSize;
-      pageSize = mobileMeals.matches ? 1 : 3;
+      pageSize = mobileMeals.matches ? 2 : 3;
       page = Math.floor(firstMeal / pageSize);
       buildPages();
       renderPage();

@@ -265,19 +265,34 @@ try {
   pass('Week navigation and rapid view changes cancel obsolete work');
 
   for (const width of [320, 390, 1200]) {
+    const mobile = width <= 560;
     frame.width = width;
     await ready();
     assert(doc().documentElement.scrollWidth <= width, 'No horizontal overflow at ' + width);
-    assert(doc().querySelector('.meal-card').getBoundingClientRect().height === 360, 'Day-mode cards keep their 360px height at ' + width);
+    const dayCards = doc().querySelectorAll('.tom-stream .meal-grid > .meal-card');
+    const dayHeight = dayCards[0].getBoundingClientRect().height;
+    if (mobile) {
+      assert(dayCards.length >= 2, 'Multiple meals available for the row check at ' + width);
+      assert(dayCards[0].getBoundingClientRect().top === dayCards[1].getBoundingClientRect().top,
+        'Two day-mode meals share one row at ' + width);
+      assert(dayHeight >= 250, 'Day-mode card sizes to its content at ' + width);
+    } else {
+      assert(dayHeight === 360, 'Day-mode cards keep their 360px height at ' + width);
+    }
     assert(doc().querySelector('.meal-content').scrollHeight <= doc().querySelector('.meal-content').clientHeight + 1,
       'Day-mode card content does not overflow at ' + width);
     layoutSwitch.click();
     await ready();
     assert(doc().documentElement.scrollWidth <= width, 'No horizontal overflow in week mode at ' + width);
-    assert(doc().querySelector('.meal-card').getBoundingClientRect().height === 400, 'Week-mode cards keep their 400px height at ' + width);
+    const weekHeight = doc().querySelector('.meal-card').getBoundingClientRect().height;
+    if (mobile) {
+      assert(weekHeight >= 250, 'Week-mode card sizes to its content at ' + width);
+    } else {
+      assert(weekHeight === 400, 'Week-mode cards keep their 400px height at ' + width);
+    }
     const content = doc().querySelector('.meal-content');
     const calendar = content.querySelector('.meal-calendar-button');
-    assert(calendar.getBoundingClientRect().bottom <= content.getBoundingClientRect().bottom, 'Calendar button fits inside fixed card at ' + width);
+    assert(calendar.getBoundingClientRect().bottom <= content.getBoundingClientRect().bottom, 'Calendar button fits inside card at ' + width);
     assert(content.scrollHeight <= content.clientHeight + 1, 'Calendar action does not overflow card at ' + width);
     layoutSwitch.click();
     await ready();
@@ -287,7 +302,7 @@ try {
   doc().querySelector('#toggle-all').click();
   await ready();
   assert(doc().querySelector('#results-summary').textContent === 'Keine Mensa ausgewählt', 'No selection empty state');
-  pass('Responsive fixed cards, themes and empty cafeteria selection');
+  pass('Responsive meal rows, themes and empty cafeteria selection');
   output.textContent += '\n\nAll tests passed.';
   document.title = 'PASS — Tom-View regression tests';
 } catch (error) {
