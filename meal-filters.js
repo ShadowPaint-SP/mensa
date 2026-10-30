@@ -34,3 +34,11 @@ export function matchesMealFilters(meal, categories, excludedCodes) {
   return categories.has(dietaryCategory(meal)) &&
     ![...mealTitleCodes(meal)].some((code) => excludedCodes.has(code));
 }
+
+// Display name without the provider's parenthetical code/quantity groups.
+// The raw name is kept in the data, filters still read it.
+export function cleanMealName(meal) {
+  if (typeof meal?.name !== 'string' || !meal.name.includes('(')) return meal?.name ?? '';
+  const cleaned = meal.name.replace(/\([^()]*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+  return cleaned || meal.name;
+}

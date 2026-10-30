@@ -178,7 +178,7 @@ try {
   const imported = (await win().calendarBlob.text()).replace(/\r\n /g, '');
   assert(win().calendarDownloads[0].name === 'mensa-2026-12-28.ics', 'Download uses the corresponding day');
   assert(win().calendarBlob.type === 'text/calendar;charset=utf-8', 'Calendar MIME type');
-  assert(imported.includes('SUMMARY:2026-12-28 Abendangebot vegan (A1)\r\n'), 'Clicked meal is the event title');
+  assert(imported.includes('SUMMARY:2026-12-28 Abendangebot vegan\r\n'), 'Clicked meal is the event title');
   assert(imported.includes('LOCATION:Selected A\\, Campus\r\n'), 'Clicked cafeteria is event location');
   assert(imported.includes('DTSTART:20261228T163000Z\r\n') && imported.includes('DTEND:20261228T180000Z\r\n'), 'Clicked day uses 17:30–19:00 Berlin');
   assert(!doc().querySelector('.picker-detail').open, 'Calendar click does not open meal details');

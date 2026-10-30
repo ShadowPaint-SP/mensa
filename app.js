@@ -1,7 +1,7 @@
 import { createMealPicker } from './meal-picker.js';
 import { createMealSlot } from './meal-slot.js';
 import { horizontalSwipe } from './swipe.js';
-import { isVeganMeal, isVegetarianMeal, mealTitleCodes, matchesMealFilters } from './meal-filters.js';
+import { isVeganMeal, isVegetarianMeal, mealTitleCodes, matchesMealFilters, cleanMealName } from './meal-filters.js';
 import { downloadMealCalendar } from './calendar.js';
 
 const API = 'https://api.studentenwerk-dresden.de/openmensa/v2';
@@ -294,7 +294,7 @@ function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
   if (imageUrl) {
     const image = element('img');
     image.src = imageUrl;
-    image.alt = meal.name;
+    image.alt = cleanMealName(meal);
     image.loading = full ? 'eager' : 'lazy';
     image.decoding = 'async';
     image.addEventListener('error', () => image.replaceWith(photoPlaceholder()), { once: true });
@@ -306,10 +306,10 @@ function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
   if (meal.soldout) photo.append(element('span', 'sold-out', 'Ausverkauft'));
   const content = element('div', 'meal-content');
   content.setAttribute('role', 'region');
-  content.setAttribute('aria-label', `Details: ${meal.name || 'Gericht'}`);
+  content.setAttribute('aria-label', `Details: ${cleanMealName(meal) || 'Gericht'}`);
   if (label) content.append(element('p', 'meal-label', label));
   content.append(element('p', 'meal-category', meal.category || 'Tagesgericht'));
-  content.append(element('h4', 'meal-name', meal.name || 'Gericht ohne Bezeichnung'));
+  content.append(element('h4', 'meal-name', cleanMealName(meal) || 'Gericht ohne Bezeichnung'));
   const prices = element('div', 'meal-prices');
   priceSources.set(prices, meal.prices);
   renderMealPrice(prices, meal.prices);
@@ -340,7 +340,7 @@ function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
     calendar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16m8 3v4m-2-2h4"/></svg>';
     calendar.append(element('span', '', 'zum Kalender hinzufügen'));
     calendar.type = 'button';
-    calendar.setAttribute('aria-label', `zum Kalender hinzufügen: ${meal.name}, am ${calendarEntry.date} von 17:30 bis 19:00 Uhr`);
+    calendar.setAttribute('aria-label', `zum Kalender hinzufügen: ${cleanMealName(meal)}, am ${calendarEntry.date} von 17:30 bis 19:00 Uhr`);
     calendar.title = '17:30–19:00 Uhr · Europe/Berlin · Kalendertermin (.ics) herunterladen';
     calendar.addEventListener('click', () => downloadMealCalendar(calendarEntry));
     content.append(calendar);

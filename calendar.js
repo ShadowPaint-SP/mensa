@@ -1,3 +1,5 @@
+import { cleanMealName } from './meal-filters.js';
+
 const berlinTime = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
@@ -59,7 +61,7 @@ export function createMealCalendar({ meal, canteen, date }, now = new Date()) {
     `DTSTAMP:${timestamp(now)}`,
     `DTSTART:${berlinTimestamp(date, '17', '30')}`,
     `DTEND:${berlinTimestamp(date, '19', '00')}`,
-    `SUMMARY:${escapeText(meal.name || 'Abendangebot')}`,
+    `SUMMARY:${escapeText(cleanMealName(meal) || 'Abendangebot')}`,
     `LOCATION:${escapeText(location)}`,
     'END:VEVENT',
     'END:VCALENDAR'
