@@ -160,7 +160,9 @@ try {
   const content = track.querySelector('.meal-content');
   assert(frame.contentWindow.getComputedStyle(content).overflowY === 'hidden', 'Browse cards are not scroll containers');
   assert(content.scrollHeight <= content.clientHeight + 1, 'Preview fits inside card');
-  content.querySelector('.meal-details-button').click();
+  const previewCard = content.closest('.meal-card');
+  previewCard.focus();
+  previewCard.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   const detail = doc().querySelector('.picker-detail');
   assert(detail.open && detail.querySelector('.meal-name').textContent.length > 1000, 'Full description accessible');
   assert(detail.querySelectorAll('li').length === 31, 'All notes accessible');
@@ -185,7 +187,7 @@ try {
     assert(detail.open, 'Photo, text and card background open the details popup');
     detail.querySelector('.picker-close').click();
   }
-  pass('Full uncropped portrait/landscape photos; card-wide details access; original details button preserved');
+  pass('Full uncropped portrait/landscape photos; card-wide and keyboard details access');
 
   const requestCount = frame.contentWindow.testRequests.length;
   const pageBeforePriceChange = status.textContent;

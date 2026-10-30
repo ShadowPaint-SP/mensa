@@ -156,7 +156,9 @@ try {
   assert(win().slotRequests.length === requestsBeforeSpin, 'Spinning uses loaded meals without API requests');
   pass('Handle, vertical animation, selection across cafeterias, keyboard focus, repeated-pull guard and no extra requests');
 
-  track.querySelector('.meal-details-button').click();
+  const winnerCard = track.querySelector('.meal-card');
+  winnerCard.focus();
+  winnerCard.dispatchEvent(new (win()).KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   assert(doc().querySelector('.picker-detail').open, 'Winner supports full meal details');
   doc().querySelector('.picker-detail .picker-close').click();
   close.click();

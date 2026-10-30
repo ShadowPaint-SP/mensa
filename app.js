@@ -324,10 +324,12 @@ function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
     content.append(details);
   }
   if (!full) {
-    const details = element('button', 'text-button meal-details-button', 'Gericht & Allergene');
-    details.type = 'button';
-    details.addEventListener('click', () => showMealDetails(meal, calendarEntry));
-    content.append(details);
+    card.tabIndex = 0;
+    card.addEventListener('keydown', (event) => {
+      if (event.target !== card || (event.key !== 'Enter' && event.key !== ' ')) return;
+      event.preventDefault();
+      showMealDetails(meal, calendarEntry);
+    });
     card.addEventListener('click', (event) => {
       if (event.target.closest('button,a,input,select,textarea,summary,details')) return;
       showMealDetails(meal, calendarEntry);

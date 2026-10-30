@@ -182,7 +182,9 @@ try {
   assert(imported.includes('LOCATION:Selected A\\, Campus\r\n'), 'Clicked cafeteria is event location');
   assert(imported.includes('DTSTART:20261228T163000Z\r\n') && imported.includes('DTEND:20261228T180000Z\r\n'), 'Clicked day uses 17:30–19:00 Berlin');
   assert(!doc().querySelector('.picker-detail').open, 'Calendar click does not open meal details');
-  doc().querySelector('#menus .meal-details-button').click();
+  const previewCard = doc().querySelector('#menus .meal-preview');
+  previewCard.focus();
+  previewCard.dispatchEvent(new (win()).KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   const detailsDialog = doc().querySelector('.picker-detail');
   assert(detailsDialog.open && detailsDialog.querySelector('.meal-calendar-button'), 'Calendar button also available in full details');
   detailsDialog.querySelector('.meal-calendar-button').click();

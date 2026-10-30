@@ -105,7 +105,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .tom-stream .meal-name{margin-bottom:10px}
 .tom-stream .meal-preview .meal-name{margin-bottom:10px}
 .tom-stream .meal-prices{padding-top:9px}
-.tom-stream .meal-details-button{margin-top:5px}
 .tom-stream.is-week .meal-calendar-button{margin-top:5px;min-height:34px;padding:6px 10px}
 .cafeteria-filter>summary{display:flex;align-items:center;gap:9px;min-height:44px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;list-style:none}
 .cafeteria-filter>summary::-webkit-details-marker{display:none}
@@ -161,7 +160,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .meal-name{font-size:16px;font-weight:600;line-height:1.65;margin:0 0 18px;color:var(--ink);overflow-wrap:anywhere}
 .meal-preview .meal-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;line-height:1.4;margin-bottom:8px}
 .meal-preview{cursor:pointer}
-.meal-details-button{align-self:flex-start;margin-top:8px;flex-shrink:0}
+.meal-preview:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
 .meal-calendar-button{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:7px 11px;min-height:36px;border:1px solid var(--mint);border-radius:7px;background:var(--mint-soft);color:var(--ink);font-size:14px;font-weight:600;line-height:1.4;text-align:left}
 .meal-calendar-button:hover{background:var(--mint);color:var(--on-mint)}
 .meal-calendar-button svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
