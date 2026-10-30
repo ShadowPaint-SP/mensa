@@ -26,7 +26,7 @@ function isEveningMeal(meal) {
 }
 
 let eveningOnly = initialSelection.evening;
-let tomView = false;
+let tomView = true; // Tom-View ist Standard: die kontinuierliche Ansicht ist die Startseite
 let tomWeekMode = false;
 const weekMode = () => tomView && tomWeekMode;
 const dietaryLabels = { meat: 'Fleisch/Fisch', vegetarian: 'Vegetarisch', vegan: 'Vegan' };

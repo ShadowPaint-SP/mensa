@@ -120,8 +120,16 @@ try {
   const layoutControl = doc().querySelector('#tom-layout');
   const evening = doc().querySelector('#evening-switch');
   assert(!evening.checked, 'Initial midday setting');
-  assert(layoutControl.hidden, 'Layout switch is limited to Tom-View');
+  assert(!layoutControl.hidden, 'Layout switch visible: Tom-View is the landing page');
+  assert(doc().querySelector('.tom-stream') && !doc().querySelector('.tom-stream.is-week'),
+    'Landing page opens in the continuous Tom-View style');
+  assert(doc().querySelector('#start-picker').hidden && doc().querySelector('#start-slot').hidden,
+    'Pickers hidden in the default Tom-View');
   assert(!doc().querySelector('.meal-calendar-button'), 'Calendar buttons are limited to Tom-View week mode');
+  toggle.click();
+  await ready();
+  assert(!doc().querySelector('.tom-stream') && !doc().querySelector('#start-picker').hidden,
+    'Toggle leaves Tom-View for the classic day view');
   toggle.click();
   await ready();
   const stream = doc().querySelector('.tom-stream');
