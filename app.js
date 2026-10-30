@@ -27,6 +27,8 @@ function isEveningMeal(meal) {
 
 let eveningOnly = initialSelection.evening;
 let tomView = false;
+let tomWeekMode = false;
+const weekMode = () => tomView && tomWeekMode;
 const dietaryLabels = { meat: 'Fleisch/Fisch', vegetarian: 'Vegetarisch', vegan: 'Vegan' };
 const dietarySelection = new Set(Object.keys(dietaryLabels));
 const excludedCodes = new Set();
@@ -96,8 +98,8 @@ function renderDays() {
   // Initialize around the selected date; browsing the strip does not select a day.
   if (!mobileDayStart) mobileDayStart = monday;
   const start = mobileMeals.matches ? mobileDayStart : monday;
-  $('previous-week').setAttribute('aria-label', mobileMeals.matches && !tomView ? 'Vorheriger Wochentag' : 'Vorherige Woche');
-  $('next-week').setAttribute('aria-label', mobileMeals.matches && !tomView ? 'Nächster Wochentag' : 'Nächste Woche');
+  $('previous-week').setAttribute('aria-label', mobileMeals.matches && !weekMode() ? 'Vorheriger Wochentag' : 'Vorherige Woche');
+  $('next-week').setAttribute('aria-label', mobileMeals.matches && !weekMode() ? 'Nächster Wochentag' : 'Nächste Woche');
   $('week-days').replaceChildren();
   for (let i = 0; i < dayCount; i++) {
     const iso = shiftWeekdays(start, i);
@@ -112,7 +114,7 @@ function renderDays() {
     button.addEventListener('click', () => changeDate(iso));
     $('week-days').append(button);
   }
-  $('menu-heading').textContent = tomView ? 'Tom-View: Abendangebote der Woche' : selectedDate === today ? 'Gerichte heute' : 'Gerichte';
+  $('menu-heading').textContent = tomView ? 'Tom-View: Gerichte' : selectedDate === today ? 'Gerichte heute' : 'Gerichte';
 }
 
 function changeDate(iso) {
@@ -124,7 +126,7 @@ function changeDate(iso) {
 }
 
 function navigateDays(offset, dragOffset = 0) {
-  if (!mobileMeals.matches || tomView) {
+  if (!mobileMeals.matches || weekMode()) {
     changeDate(shiftDate(selectedDate, offset));
     return;
   }
@@ -172,7 +174,7 @@ horizontalSwipe($('day-viewport'), {
     if (!mobileMeals.matches) { grid.style.transform = ''; return; }
     if (!cancelled && (Math.abs(dx) >= Math.min(65, $('day-viewport').clientWidth * .2) ||
         (Math.abs(dx) > 20 && Math.abs(velocityX) > .5 && dx * velocityX > 0))) {
-      navigateDays(dx < 0 ? (tomView ? 7 : 5) : (tomView ? -7 : -5), offset);
+      navigateDays(dx < 0 ? (weekMode() ? 7 : 5) : (weekMode() ? -7 : -5), offset);
     } else {
       grid.style.transform = '';
       if (offset && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -280,7 +282,7 @@ function showMealDetails(meal, calendarEntry) {
   detailDialog.showModal();
 }
 
-function mealCard(meal, { full = false, calendarEntry } = {}) {
+function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
   const card = element('article', full ? 'meal-card' : 'meal-card meal-preview');
   const photo = element('div', 'meal-photo');
   const notes = Array.isArray(meal.notes) ? meal.notes.filter((note) => typeof note === 'string') : [];
@@ -305,6 +307,7 @@ function mealCard(meal, { full = false, calendarEntry } = {}) {
   const content = element('div', 'meal-content');
   content.setAttribute('role', 'region');
   content.setAttribute('aria-label', `Details: ${meal.name || 'Gericht'}`);
+  if (label) content.append(element('p', 'meal-label', label));
   content.append(element('p', 'meal-category', meal.category || 'Tagesgericht'));
   content.append(element('h4', 'meal-name', meal.name || 'Gericht ohne Bezeichnung'));
   const prices = element('div', 'meal-prices');
@@ -532,19 +535,37 @@ function renderAdditiveOptions(meals) {
   $('clear-additives').disabled = !excludedCodes.size;
 }
 
-function tomDaySection(date, entries) {
-  const section = element('section', 'tom-day');
-  section.dataset.date = date;
-  const heading = element('h3', 'tom-day-heading',
-    asDate(date).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }));
-  heading.id = `tom-day-${date}`;
-  section.setAttribute('aria-labelledby', heading.id);
-  section.append(heading);
-  const available = entries.filter(({ result }) => result.error || result.meals.length);
-  if (available.length) {
-    section.append(...available.map(({ canteen, result }) => canteenSection(canteen, result, date)));
-  } else {
-    section.append(element('p', 'canteen-empty', 'Keine passenden Abendangebote für die ausgewählten Mensen veröffentlicht.'));
+function tomStream(entries, { weekly }) {
+  const section = element('section', `tom-stream${weekly ? ' is-week' : ''}`);
+  const errors = entries.filter(({ result }) => result.error).length;
+  if (errors) {
+    const note = element('div', 'canteen-empty',
+      `${errors} ${errors === 1 ? 'Speiseplan konnte' : 'Speisepläne konnten'} nicht geladen werden. `);
+    const retry = element('button', 'text-button', 'Erneut versuchen');
+    retry.addEventListener('click', () => loadMenus());
+    note.append(retry);
+    section.append(note);
+  }
+  const cards = [];
+  for (const { date, canteen, result } of entries) {
+    if (result.error || !result.meals.length) continue;
+    const label = weekly
+      ? `${asDate(date).toLocaleDateString('de-DE',
+          { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })} · ${canteen.name}`
+      : canteen.name;
+    result.meals.forEach((meal) => cards.push(mealCard(meal, {
+      calendarEntry: weekly ? { meal, canteen, date } : undefined,
+      label
+    })));
+  }
+  const grid = element('div', 'meal-grid');
+  grid.append(...cards);
+  section.append(grid);
+  if (!cards.length && !errors) {
+    section.append(message(weekly || eveningOnly ? 'Keine passenden Abendangebote' : 'Keine passenden Mittagsgerichte',
+      weekly
+        ? 'Für die ausgewählten Mensen und diese Woche sind keine passenden Abendgerichte veröffentlicht. Ändere die Filter oder die Mensa-Auswahl.'
+        : 'Für die ausgewählten Mensen und diesen Tag sind keine passenden Gerichte veröffentlicht. Ändere die Filter oder die Mensa-Auswahl.'));
   }
   return section;
 }
@@ -571,10 +592,10 @@ async function loadMenus() {
   $('results-summary').textContent = 'Speisepläne werden geladen …';
   const loading = element('div', 'meal-grid');
   loading.setAttribute('aria-hidden', 'true');
-  for (let i = 0; i < 3; i++) loading.append(element('div', 'skeleton'));
+  for (let i = 0; i < (tomView ? 5 : 3); i++) loading.append(element('div', 'skeleton'));
   container.append(loading);
   const date = selectedDate;
-  const weekly = tomView;
+  const weekly = weekMode();
   const monday = shiftDate(date, -((asDate(date).getUTCDay() + 6) % 7));
   const dates = weekly ? Array.from({ length: 5 }, (_, i) => shiftDate(monday, i)) : [date];
   const evening = weekly || eveningOnly;
@@ -612,12 +633,12 @@ async function loadMenus() {
   });
   const entries = tasks.map((task, i) => ({ ...task, result: results[i] }));
   const available = entries.filter(({ result }) => result.error || result.meals.length);
-  if (weekly) {
-    container.replaceChildren(...dates.map((date) => tomDaySection(date, entries.filter((entry) => entry.date === date))));
+  if (tomView) {
+    container.replaceChildren(tomStream(available, { weekly }));
   } else {
     container.replaceChildren(...available.map(({ canteen, result }) => canteenSection(canteen, result)));
   }
-  if (!weekly && !available.length) {
+  if (!tomView && !available.length) {
     container.append(message(
       !diet.size ? 'Keine Ernährungsart ausgewählt' : evening ? 'Keine passenden Abendangebote' : 'Keine passenden Mittagsgerichte',
       !diet.size ? 'Wähle mindestens eine Ernährungsart aus.' : 'Für die ausgewählten Mensen und diesen Tag sind keine passenden Gerichte veröffentlicht. Ändere die Filter, den Tag oder die Mensa-Auswahl.'
@@ -633,7 +654,7 @@ async function loadMenus() {
   $('results-summary').textContent = [...(weekly ? ['Tom-View'] : []), dateLabel, evening ? 'Abend' : 'Mittag', ...dietarySummary,
     ...(exclusions.size ? [`Ausgeblendet: ${[...exclusions].join(', ')}`] : []),
     `${new Set(available.map(({ canteen }) => canteen.id)).size} Mensen`, `${total} Gerichte`, ...(errors ? [`${errors} nicht abrufbar`] : [])].join(' · ');
-  if (!weekly) {
+  if (!tomView) {
     const selectableMeals = entries.flatMap(({ canteen, result }) =>
       result.meals.map((meal) => ({ meal, canteen }))
     );
@@ -700,17 +721,29 @@ $('evening-switch').addEventListener('change', (event) => {
 $('tom-view').addEventListener('click', () => {
   tomView = !tomView;
   $('tom-view').setAttribute('aria-pressed', String(tomView));
-  $('evening-switch').disabled = tomView;
-  $('evening-switch').checked = tomView || eveningOnly;
+  if (tomView) tomWeekMode = false;
+  $('tom-layout-week').checked = tomWeekMode;
+  $('evening-switch').disabled = weekMode();
+  $('evening-switch').checked = weekMode() || eveningOnly;
   $('start-picker').hidden = tomView;
   $('start-slot').hidden = tomView;
+  $('tom-layout').hidden = !tomView;
+  mobileDayStart = undefined;
+  renderDays();
+  if (canteens.length) loadMenus();
+});
+$('tom-layout-week').addEventListener('change', (event) => {
+  if (!tomView) return;
+  tomWeekMode = event.target.checked;
+  $('evening-switch').disabled = weekMode();
+  $('evening-switch').checked = weekMode() || eveningOnly;
   mobileDayStart = undefined;
   renderDays();
   if (canteens.length) loadMenus();
 });
 $('date-input').addEventListener('change', (event) => changeDate(event.target.value));
-$('previous-week').addEventListener('click', () => navigateDays(mobileMeals.matches && !tomView ? -1 : -7));
-$('next-week').addEventListener('click', () => navigateDays(mobileMeals.matches && !tomView ? 1 : 7));
+$('previous-week').addEventListener('click', () => navigateDays(mobileMeals.matches && !weekMode() ? -1 : -7));
+$('next-week').addEventListener('click', () => navigateDays(mobileMeals.matches && !weekMode() ? 1 : 7));
 mobileMeals.addEventListener('change', () => {
   mobileDayStart = undefined;
   renderDays();

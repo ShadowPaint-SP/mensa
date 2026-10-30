@@ -84,8 +84,29 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .tom-toggle{min-height:34px;padding:6px 12px;border:1px solid var(--line);border-radius:24px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}
 .tom-toggle:hover{border-color:var(--mint)}
 .tom-toggle[aria-pressed=true]{background:var(--strong-bg);color:var(--on-strong);border-color:var(--strong-bg)}
-.tom-day{margin-bottom:30px}
-.tom-day-heading{margin:0 0 18px;padding:12px 0;border-bottom:2px solid var(--mint);font-family:'Manrope',sans-serif;font-size:20px;letter-spacing:-.4px}
+.tom-layout{position:relative;display:grid;grid-template-columns:1fr 1fr;align-items:center;width:132px;height:34px;margin-left:8px;border:1px solid var(--line);border-radius:24px;background:var(--surface);font-size:14px;cursor:pointer;isolation:isolate}
+.tom-layout input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer;z-index:2}
+.tom-layout:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:3px}
+.layout-highlight{position:absolute;inset:3px auto 3px 3px;width:calc(50% - 3px);border-radius:20px;background:var(--mint);box-shadow:0 1px 4px #020d3012;transition:transform .32s cubic-bezier(.22,.68,.18,1),background .25s}
+.layout-option{position:relative;display:flex;justify-content:center;align-items:center;line-height:1;font-weight:600;color:var(--muted);transition:color .25s}
+.layout-tag{color:var(--on-mint)}
+.tom-layout input:checked~.layout-highlight{transform:translateX(100%);background:var(--on-mint)}
+.tom-layout input:checked~.layout-tag{color:var(--muted)}
+.tom-layout input:checked~.layout-week{color:var(--mint)}
+.tom-layout:hover{border-color:var(--mint)}
+.tom-stream{--card-height:360px;margin-bottom:30px}
+.tom-stream.is-week{--card-height:400px}
+.tom-stream>.canteen-empty{margin-bottom:14px}
+.tom-stream .meal-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.tom-stream .meal-photo{height:140px}
+.tom-stream .meal-content{padding:14px}
+.tom-stream .meal-label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.2px;margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tom-stream .meal-category{margin-bottom:5px}
+.tom-stream .meal-name{margin-bottom:10px}
+.tom-stream .meal-preview .meal-name{margin-bottom:10px}
+.tom-stream .meal-prices{padding-top:9px}
+.tom-stream .meal-details-button{margin-top:5px}
+.tom-stream.is-week .meal-calendar-button{margin-top:5px;min-height:34px;padding:6px 10px}
 .cafeteria-filter>summary{display:flex;align-items:center;gap:9px;min-height:44px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;list-style:none}
 .cafeteria-filter>summary::-webkit-details-marker{display:none}
 .cafeteria-filter>summary:after{content:"⌄";margin-left:auto}
@@ -144,7 +165,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .meal-calendar-button{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:7px 11px;min-height:36px;border:1px solid var(--mint);border-radius:7px;background:var(--mint-soft);color:var(--ink);font-size:14px;font-weight:600;line-height:1.4;text-align:left}
 .meal-calendar-button:hover{background:var(--mint);color:var(--on-mint)}
 .meal-calendar-button svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.tom-day .meal-preview .meal-name{-webkit-line-clamp:2}
 .meal-prices{border-top:1px solid var(--line);padding-top:13px;display:flex;align-items:baseline;flex-wrap:wrap;gap:7px 14px;margin-top:auto}
 .selected-price{font-size:19px;letter-spacing:-.6px;font-weight:700}
 .price-label{font-size:14px;color:var(--muted);font-weight:400;letter-spacing:0;margin-left:5px}
@@ -260,6 +280,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
   .date-controls{gap:10px}
   .meal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .meal-viewport.is-paginated .meal-page{grid-template-rows:repeat(2,var(--card-height))}
+  .tom-stream .meal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:560px){
   :root{--meal-gap:14px}
@@ -277,6 +298,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
   .cafeteria-chip{padding:8px 9px}
   .cafeteria-options{gap:6px}
   .meal-grid{grid-template-columns:1fr}
+  .tom-stream .meal-grid{grid-template-columns:1fr}
   .meal-viewport{touch-action:pan-y}
   .meal-viewport .meal-card{user-select:none;-webkit-user-select:none}
   .meal-viewport .meal-photo{user-select:none;-webkit-user-select:none}

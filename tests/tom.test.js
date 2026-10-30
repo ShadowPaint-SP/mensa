@@ -116,32 +116,54 @@ try {
     .replace('<link rel="stylesheet" href="./styles.css">', `<style>${css.replace(/^@import.*$/m, '')}</style>`);
   await ready();
   const toggle = doc().querySelector('#tom-view');
+  const layoutSwitch = doc().querySelector('#tom-layout-week');
+  const layoutControl = doc().querySelector('#tom-layout');
   const evening = doc().querySelector('#evening-switch');
   assert(!evening.checked, 'Initial midday setting');
-  assert(!doc().querySelector('.meal-calendar-button'), 'Calendar buttons are limited to dated Tom-View meals');
+  assert(layoutControl.hidden, 'Layout switch is limited to Tom-View');
+  assert(!doc().querySelector('.meal-calendar-button'), 'Calendar buttons are limited to Tom-View week mode');
   toggle.click();
   await ready();
-  const days = [...doc().querySelectorAll('.tom-day')];
-  assert(days.length === 5, 'Five weekdays in weekly view');
-  assert(days[0].dataset.date === '2026-12-28' && days[4].dataset.date === '2027-01-01', 'Monday–Friday across year boundary');
+  const stream = doc().querySelector('.tom-stream');
+  assert(stream && !stream.classList.contains('is-week'), 'Tom-View opens on the main page in continuous style');
+  assert(!layoutControl.hidden && !layoutSwitch.checked, 'Layout switch visible with day selected');
+  const dayLabels = [...doc().querySelectorAll('#menus .meal-label')];
+  assert(dayLabels.length === 2 && dayLabels.map((label) => label.textContent).join(' ') === 'Selected A Selected C',
+    'Day cards are labelled with the cafeteria only');
+  assert(!evening.disabled && !evening.checked, 'Day mode keeps the main page period switch');
+  assert(!doc().querySelector('#menus .meal-calendar-button'), 'Day mode has no calendar buttons');
+  assert(doc().querySelector('#start-picker').hidden, 'Picker hidden while Tom-View is active');
+  assert(doc().querySelector('#start-slot').hidden && doc().querySelector('#start-slot').disabled,
+    'Slot machine hidden while Tom-View is active');
+  doc().querySelector('#week-days .day-button[data-date="2026-12-28"]').click();
+  await ready();
+  assert(doc().querySelector('#menus .meal-name').textContent.includes('2026-12-28'),
+    'Day strip navigates between single days in day mode');
+  pass('Tom-View opens as the main page in continuous style with cafeteria labels');
+
+  layoutSwitch.click();
+  await ready();
+  assert(doc().querySelector('.tom-stream.is-week') && !doc().querySelector('.tom-stream:not(.is-week)'),
+    'Slider switches to the weekly evening view');
+  const labels = [...doc().querySelectorAll('#menus .meal-label')];
+  assert(labels.length === 8, 'Published evening offers from Monday to Thursday fill the grid');
+  assert(labels[0].textContent.startsWith('Mo., 28. Dez.') && labels[0].textContent.endsWith('Selected A'),
+    'First card labels Monday and its cafeteria');
+  assert(labels[labels.length - 1].textContent.startsWith('Do., 31. Dez.'), 'Unpublished Friday contributes no cards');
   assert(win().requests.filter((url) => url.includes('/days/')).every((url) => {
     const date = url.match(/days\/([\d-]+)/)[1];
     return ![0, 6].includes(new Date(date + 'T12:00:00Z').getUTCDay());
   }), 'Weekend menus are not requested');
-  assert(days[4].querySelector('.canteen-empty'), 'Unpublished Friday explicitly marked');
   assert(doc().querySelector('#results-summary').textContent.includes('1. Januar 2027'), 'Weekly summary ends on Friday');
   assert([...doc().querySelectorAll('#menus .meal-name')].every((name) => name.textContent.includes('Abendangebot')), 'Only evening menus displayed');
   assert(!win().requests.some((url) => url.includes('/canteens/2/')), 'Hidden cafeteria never requested');
   assert(win().maxRequests <= 4, 'At most four concurrent requests');
-  assert(evening.checked && evening.disabled, 'Weekly view locks Abend selection');
-  assert(doc().querySelector('#start-picker').hidden, 'Single-day picker unavailable for mixed-date view');
-  assert(doc().querySelector('#start-slot').hidden && doc().querySelector('#start-slot').disabled,
-    'Single-day slot machine unavailable for mixed-date view');
+  assert(evening.checked && evening.disabled, 'Weekly mode locks Abend selection');
   const ids = [...doc().querySelectorAll('[id]')].map((node) => node.id);
   assert(new Set(ids).size === ids.length, 'Repeated cafeterias have unique accessible IDs');
-  pass('Weekdays only, no weekend requests, year boundary, evening-only data, hidden cafeterias, concurrency and unique IDs');
+  pass('Flat weekly grid, day/cafeteria labels, no weekend requests, year boundary, evening-only data, hidden cafeterias, concurrency and unique IDs');
 
-  const firstCalendar = days[0].querySelector('.meal-calendar-button');
+  const firstCalendar = doc().querySelector('#menus .meal-calendar-button');
   assert(firstCalendar && firstCalendar.getAttribute('aria-label').includes('2026-12-28'), 'Calendar button labels the meal date');
   assert(firstCalendar.textContent === 'zum Kalender hinzufügen' && firstCalendar.querySelector('svg'), 'Visible calendar button with calendar icon');
   firstCalendar.click();
@@ -152,7 +174,7 @@ try {
   assert(imported.includes('LOCATION:Selected A\\, Campus\r\n'), 'Clicked cafeteria is event location');
   assert(imported.includes('DTSTART:20261228T163000Z\r\n') && imported.includes('DTEND:20261228T180000Z\r\n'), 'Clicked day uses 17:30–19:00 Berlin');
   assert(!doc().querySelector('.picker-detail').open, 'Calendar click does not open meal details');
-  days[0].querySelector('.meal-details-button').click();
+  doc().querySelector('#menus .meal-details-button').click();
   const detailsDialog = doc().querySelector('.picker-detail');
   assert(detailsDialog.open && detailsDialog.querySelector('.meal-calendar-button'), 'Calendar button also available in full details');
   detailsDialog.querySelector('.meal-calendar-button').click();
@@ -160,26 +182,39 @@ try {
   detailsDialog.querySelector('.picker-close').click();
   pass('Calendar buttons download the selected meal/date/location without triggering card details');
 
-  const failedDay = days[1];
-  assert(failedDay.querySelector('.meal-count').textContent === 'Nicht verfügbar' ||
-    [...failedDay.querySelectorAll('.meal-count')].some((node) => node.textContent === 'Nicht verfügbar'), 'Partial failure remains visible');
+  const failureNote = doc().querySelector('.tom-stream.is-week > .canteen-empty');
+  assert(failureNote && failureNote.textContent.includes('1 Speiseplan konnte nicht geladen werden'), 'Partial failure remains visible');
   win().failTuesday = false;
   const beforeRetry = win().requests.length;
-  failedDay.querySelector('.canteen-empty button').click();
+  failureNote.querySelector('button').click();
   await ready();
   assert(win().requests.length === beforeRetry + 1, 'Retry fetches only missing response; successful results cached');
   pass('Partial failures and retry without discarding successful days');
+
+  layoutSwitch.click();
+  await ready();
+  const backStream = doc().querySelector('.tom-stream');
+  assert(backStream && !backStream.classList.contains('is-week') &&
+    !doc().querySelector('#menus .meal-calendar-button'),
+    'Slider returns to the main-page-style day view');
+  assert(doc().querySelectorAll('#menus .meal-label').length === 2, 'Day view shows the selected day again');
+  assert(!evening.disabled, 'Day mode re-enables the period switch');
 
   const beforeCachedSwitch = win().requests.length;
   toggle.click();
   await ready();
   assert(!evening.disabled && !evening.checked, 'Leaving restores previous midday selection');
-  assert(!doc().querySelector('.tom-day') && !doc().querySelector('#start-picker').hidden, 'Day view and picker restored');
+  assert(!doc().querySelector('.tom-stream') && !doc().querySelector('#start-picker').hidden, 'Day view and picker restored');
   assert(!doc().querySelector('#start-slot').hidden && !doc().querySelector('#start-slot').disabled,
     'Slot machine restored with single-day meals');
+  assert(layoutControl.hidden, 'Layout switch hidden outside Tom-View');
   toggle.click();
   await ready();
+  assert(doc().querySelector('.tom-stream') && !doc().querySelector('.tom-stream.is-week'),
+    'Re-entering Tom-View restores the main-page-style day view');
   assert(win().requests.length === beforeCachedSwitch, 'Switching views reuses cached raw responses');
+  layoutSwitch.click();
+  await ready();
   doc().querySelector('#dietary-filter input[value="meat"]').click();
   doc().querySelector('#dietary-filter input[value="vegetarian"]').click();
   await ready();
@@ -189,7 +224,8 @@ try {
   doc().querySelector('#additive-options input[data-code="A1"]').click();
   await ready();
   assert(!doc().querySelector('#menus .meal-card') &&
-    doc().querySelectorAll('.tom-day').length === 5, 'Additive exclusions apply to every day without hiding week headings');
+    doc().querySelector('#menus .message h3').textContent === 'Keine passenden Abendangebote',
+    'Additive exclusions empty the weekly grid with a weekly empty state');
   assert(doc().querySelector('#additive-options input[data-code="A1"]').checked, 'Excluded code stays available');
   doc().querySelector('#clear-additives').click();
   await ready();
@@ -197,32 +233,46 @@ try {
   assert(win().requests.length === beforeExclusions, 'Weekly exclusions reuse cached raw responses');
   doc().querySelector('input[name="price-category"][value="employee"]').click();
   assert([...doc().querySelectorAll('#menus .meal-prices')].every((node) => node.textContent.includes('4,90')), 'Selected price applies across week');
-  pass('Day-mode restoration, shared cache, dietary multiselect, additive exclusions and price selections');
+  doc().querySelector('#dietary-filter input[value="meat"]').click();
+  doc().querySelector('#dietary-filter input[value="vegetarian"]').click();
+  await ready();
+  assert(doc().querySelectorAll('#menus .meal-name').length === 8, 'Restored diet selections reload the full week');
+  pass('Layout slider, day-mode restoration, shared cache, dietary multiselect, additive exclusions and price selections');
 
   const next = doc().querySelector('#next-week');
   assert(next.getAttribute('aria-label') === 'Nächste Woche', 'Mobile arrows announce whole week');
   next.click();
   await ready();
-  assert(doc().querySelector('.tom-day').dataset.date === '2027-01-04', 'Next arrow changes whole week on mobile');
+  assert(doc().querySelector('#menus .meal-label').textContent.startsWith('Mo., 4. Jan.'), 'Next arrow changes whole week on mobile');
   win().testDelay = 50;
   next.click();
   toggle.click();
   await ready();
-  assert(!doc().querySelector('.tom-day'), 'Obsolete weekly requests do not overwrite day view');
+  assert(!doc().querySelector('.tom-stream'), 'Obsolete weekly requests do not overwrite day view');
   assert(win().maxRequests <= 4, 'Concurrency bound remains valid through cancellation');
   toggle.click();
   await ready();
+  assert(doc().querySelector('.tom-stream') && !doc().querySelector('.tom-stream.is-week'),
+    'Re-entering Tom-View renders the main-page-style day view again');
   pass('Week navigation and rapid view changes cancel obsolete work');
 
   for (const width of [320, 390, 1200]) {
     frame.width = width;
-    await wait(100);
+    await ready();
     assert(doc().documentElement.scrollWidth <= width, 'No horizontal overflow at ' + width);
-    assert(doc().querySelector('.meal-card').getBoundingClientRect().height === 420, 'Fixed-height cards at ' + width);
+    assert(doc().querySelector('.meal-card').getBoundingClientRect().height === 360, 'Day-mode cards keep their 360px height at ' + width);
+    assert(doc().querySelector('.meal-content').scrollHeight <= doc().querySelector('.meal-content').clientHeight + 1,
+      'Day-mode card content does not overflow at ' + width);
+    layoutSwitch.click();
+    await ready();
+    assert(doc().documentElement.scrollWidth <= width, 'No horizontal overflow in week mode at ' + width);
+    assert(doc().querySelector('.meal-card').getBoundingClientRect().height === 400, 'Week-mode cards keep their 400px height at ' + width);
     const content = doc().querySelector('.meal-content');
     const calendar = content.querySelector('.meal-calendar-button');
     assert(calendar.getBoundingClientRect().bottom <= content.getBoundingClientRect().bottom, 'Calendar button fits inside fixed card at ' + width);
     assert(content.scrollHeight <= content.clientHeight + 1, 'Calendar action does not overflow card at ' + width);
+    layoutSwitch.click();
+    await ready();
   }
   doc().querySelector('#theme-toggle').click();
   assert(doc().documentElement.dataset.theme, 'Theme toggle still works');
