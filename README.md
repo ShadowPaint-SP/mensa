@@ -24,6 +24,13 @@ Open `http://<computer-LAN-IP>:8006` on the phone (not `localhost`). Allow local
 
 Publish `index.html`, `styles.css`, `app.js`, `theme.js`, `meal-filters.js`, `meal-picker.js`, `meal-slot.js`, `swipe.js`, `calendar.js`, and `favicon.svg` together on any HTTPS static host (including GitHub Pages). All asset paths are relative, so subdirectory deployments work.
 
+Development and testing happen in a local checkout on the desktop (`~/Projects/mensa`). Production runs on the Raspberry Pi, served from `/var/www/mensa`; publishing is a push here followed by a pull on the Pi:
+
+```sh
+git push origin main
+ssh pi 'cd /var/www/mensa && git pull'
+```
+
 ## Data and scope
 
 - Cafeterias and dated menus are fetched directly in the browser from https://api.studentenwerk-dresden.de/openmensa/v2. The official API permits cross-origin requests.
