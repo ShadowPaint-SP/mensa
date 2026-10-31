@@ -20,6 +20,22 @@ python3 -m http.server 8006 --bind 0.0.0.0
 
 Open `http://<computer-LAN-IP>:8006` on the phone (not `localhost`). Allow local-network access through the computer's firewall if prompted. This exposes the served directory to devices on the local network; stop the server when finished and do not forward this port to the internet.
 
+### Nix
+
+The repository ships a flake for a reproducible dev shell, build and test run. The site itself still has no build step; the package is just the deployable file set.
+
+```sh
+nix develop                              # chromium, node, python, nixfmt
+nix develop -c tests/browser-tests.sh    # headless browser regression checks
+nix run                                  # serve the built site on :8000
+PORT=8006 BIND=0.0.0.0 nix run           # serve to the local network (phone testing)
+nix build                                # ./result/share/mensa = deployable files
+nix flake check                          # build + browser checks, the CI gate
+nix fmt flake.nix
+```
+
+`nix flake check` runs all four `/tests` pages in headless Chromium against the built package, so a file missing from the deploy list fails the check.
+
 ## Deploy
 
 Publish `index.html`, `styles.css`, `app.js`, `theme.js`, `meal-filters.js`, `meal-picker.js`, `meal-slot.js`, `swipe.js`, `calendar.js`, and `favicon.svg` together on any HTTPS static host (including GitHub Pages). All asset paths are relative, so subdirectory deployments work.
@@ -64,6 +80,15 @@ ssh pi 'cd /var/www/mensa && git pull'
 Data and images remain those of [Studentenwerk Dresden](https://www.studentenwerk-dresden.de/mensen/speiseplan/). This is an independent interface, not the official website.
 
 ## Browser regression checks
+
+Run all pages headlessly, either inside the dev shell or by serving a checkout yourself:
+
+```sh
+nix develop -c tests/browser-tests.sh             # current checkout
+nix develop -c tests/browser-tests.sh result/share/mensa   # a built site
+```
+
+The runner starts a local HTTP server and headless Chromium, then waits for each page's `PASS — …`/`FAIL — …` title and prints its output. `nix flake check` does the same against the built package.
 
 With the static server running, open `/tests/swipe.html`. It loads the production modules in an isolated iframe with API fixtures and simulated touch-pointer events. It checks live finger-position transforms before release, capture-loss events from nested elements, pagination, cancellation, no-scroll card layouts, full details, and voting. It does not change saved cafeteria preferences or query the live menu API. Test results appear on the page.
 
