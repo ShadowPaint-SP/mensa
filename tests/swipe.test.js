@@ -320,7 +320,8 @@ try {
   assert(doc().querySelectorAll('.canteen-section').length === 1, 'Only cafeteria with evening meals remains');
   doc().querySelector('#start-picker').click();
   assert(body.querySelector('.picker-progress').textContent.startsWith('1 von 3'), 'Picker uses only evening meals');
-  const eveningName = (id) => `Abendangebot: Meal ${id}${{90:' (A, A1, 2)',91:' (D)',92:' (A1, G)'}[id]}`;
+  // Displayed names hide the parenthesized allergen/additive code lists.
+  const eveningName = (id) => `Abendangebot: Meal ${id}${{90:' (A, A1, 2)',91:' (D)',92:' (A1, G)'}[id]}`.replace(/\s*\([^()]*\)/g, '').trim();
   assert(body.querySelector('.meal-name').textContent === eveningName(90), 'Picker contains evening dish');
   doc().querySelector('#close-picker').click();
   assert(doc().querySelectorAll('#dietary-filter input:checked').length === 3, 'All three meal groups selected initially');
