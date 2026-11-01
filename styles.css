@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap');
 
-:root{color-scheme:light;--paper:#fff;--ink:#020D30;--mint:#A0D7B8;--accent:#DA321C;--muted:#626b7e;--line:#e2e6ed;--surface:#f5f7fa;--mint-soft:#edf8f2;--white:#fff;--strong-bg:#020D30;--on-strong:#fff;--on-mint:#020D30;--font:'DM Sans',sans-serif;--card-height:420px;--meal-gap:14px}
+:root{color-scheme:light;--paper:#fff;--ink:#020D30;--mint:#A0D7B8;--accent:#DA321C;--muted:#626b7e;--line:#e2e6ed;--surface:#f5f7fa;--mint-soft:#edf8f2;--white:#fff;--strong-bg:#020D30;--on-strong:#fff;--on-mint:#020D30;--font:'DM Sans',sans-serif;--card-height:420px;--meal-gap:8px}
 :root[data-theme=dark]{color-scheme:dark;--paper:#121212;--ink:#f2f2f2;--accent:#ff806b;--muted:#b3b3b3;--line:#3a3a3a;--surface:#1d1d1d;--mint-soft:#203d36;--white:#1a1a1a;--strong-bg:#A0D7B8;--on-strong:#020D30}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
@@ -15,7 +15,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .site-header{border-bottom:1px solid var(--line);background:var(--paper)}
 .header-inner,.container,.footer-inner,.footer-disclaimer{max-width:1240px;margin:auto}
-.header-inner{height:55px;display:flex;align-items:center;gap:18px;padding:0 24px}
+.header-inner{height:55px;display:flex;align-items:center;gap:18px;padding:0 8px}
 .brand{display:inline-flex;align-items:center;gap:0;text-decoration:none;font-family:'Manrope',sans-serif;font-weight:800;letter-spacing:-1.5px;font-size:28px}
 .brand-dot{color:var(--accent)}
 .header-location{font-size:14px;color:var(--muted)}
@@ -24,7 +24,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .theme-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .theme-sun,[data-theme=dark] .theme-moon{display:none}
 [data-theme=dark] .theme-sun{display:block}
-.container{padding:0 24px}
+.container{padding:0 8px}
 .controls{margin-top:15px;background:var(--white);border:1px solid var(--line);border-radius:10px}
 .date-controls{display:flex;align-items:center;gap:16px;padding:10px 12px}
 #date-input{border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--ink);font-size:14px;background:var(--white);width:156px;min-width:0}
@@ -159,7 +159,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .canteen-empty{font-size:14px;color:var(--muted);padding:22px;background:var(--surface);border-radius:8px;line-height:1.8}
 .skeleton{height:340px;border-radius:11px;background:linear-gradient(110deg,var(--surface) 20%,var(--mint-soft) 45%,var(--surface) 70%);background-size:200% 100%;animation:shimmer 1.8s infinite}
 @keyframes shimmer{to{background-position:-200% 0}}
-.site-footer{border-top:1px solid var(--line);padding:25px 24px;background:var(--white)}
+.site-footer{border-top:1px solid var(--line);padding:25px 8px;background:var(--white)}
 .footer-inner{display:flex;align-items:center;gap:20px}
 .footer-brand{font-size:25px}
 .footer-inner>a:last-child{margin-left:auto;font-size:14px;color:var(--muted);text-decoration:none}
@@ -176,16 +176,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .picker-detail .no-photo{min-height:175px}
 [hidden]{display:none!important}
 @media(max-width:850px){
-  .header-inner,.container{padding-left:18px;padding-right:18px}
   .date-controls{gap:10px}
   .meal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .tom-stream .meal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:560px){
-  :root{--meal-gap:10px}
-  .header-inner{height:49px;gap:12px;padding:0 14px}
+  :root{--meal-gap:2px}
+  .header-inner{height:49px;gap:12px;padding:0 2px}
   .brand{font-size:25px}
-  .container{padding:0 10px}
+  .container{padding:0 2px}
   .controls{margin-top:10px}
   .date-controls{flex-wrap:wrap;gap:8px;padding:8px}
   .week-navigation{flex-basis:100%;gap:4px}
@@ -205,7 +204,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
   .meal-card .price-label,.meal-card .other-price{font-size:13px}
   .meal-card .meal-calendar-button,.meal-card .meal-notes{font-size:13px}
   .meal-card .diet-badge,.meal-card .sold-out,.meal-card .no-photo span{font-size:13px}
-  .site-footer{padding:24px 16px}
+  .site-footer{padding:24px 2px}
   .footer-inner{flex-wrap:wrap;gap:8px 13px}
   .footer-inner>a:last-child{margin-left:0;flex-basis:100%;margin-top:7px}
   .message{padding:25px 17px}

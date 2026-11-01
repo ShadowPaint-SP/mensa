@@ -268,12 +268,12 @@ try {
     const nameSize = win().getComputedStyle(doc().querySelector('.meal-name')).fontSize;
     const metaSize = win().getComputedStyle(doc().querySelector('.meal-label')).fontSize;
     if (mobile) {
-      assert(gridGap === '10px', 'Smaller mobile gap between cards at ' + width);
-      assert(gutter === '10px', 'Smaller mobile gap to the page edge at ' + width);
+      assert(gridGap === '2px', 'Tighter mobile gap between cards at ' + width);
+      assert(gutter === '2px', 'Tighter mobile gap to the page edge at ' + width);
       assert(nameSize === '15px' && metaSize === '11px', 'Slightly smaller mobile card text at ' + width);
     } else {
-      assert(gridGap === '14px', 'Smaller desktop gap between cards at ' + width);
-      assert(gutter === '24px', 'Smaller desktop gap to the page edge at ' + width);
+      assert(gridGap === '8px', 'Tighter desktop gap between cards at ' + width);
+      assert(gutter === '8px', 'Tighter desktop gap to the page edge at ' + width);
       assert(nameSize === '16px' && metaSize === '12px', 'Desktop card text unchanged at ' + width);
     }
     layoutSwitch.click();
