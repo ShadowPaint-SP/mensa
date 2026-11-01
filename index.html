@@ -63,7 +63,6 @@
               <span class="period-option period-lunch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Mittag</span>
               <span class="period-option period-evening"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8.5 8.5 0 0 1 10 4 8.5 8.5 0 1 0 20 14Z"/><path class="moon-star" d="M18 3v4m-2-2h4"/></svg>Abend</span>
             </label>
-            <button id="tom-view" class="tom-toggle" type="button" aria-pressed="true" title="Ansicht umschalten">Tom-View</button>
             <label id="tom-layout" class="tom-layout" title="Nur die Abendangebote der ganzen Woche anzeigen">
               <input id="tom-layout-week" type="checkbox" role="switch" aria-label="Nur die Abendangebote der ganzen Woche anzeigen">
               <span class="layout-highlight" aria-hidden="true"></span>
@@ -88,35 +87,11 @@
       <section class="menu-area" aria-labelledby="menu-heading">
         <div class="results-heading">
           <div><h2 id="menu-heading" class="sr-only">Gerichte</h2><p id="results-summary" class="results-summary" role="status">Der Speiseplan wird geladen …</p></div>
-          <div class="meal-tools">
-            <button id="start-slot" class="picker-start slot-start" type="button" disabled hidden><span aria-hidden="true">✳</span> Zufallsgericht</button>
-            <button id="start-picker" class="picker-start" type="button" disabled hidden>♡ Gerichte swipen</button>
-          </div>
         </div>
         <div id="menus" aria-busy="true"></div>
       </section>
       <noscript><div class="message"><h3>Bitte JavaScript aktivieren</h3><p>Die Speisepläne werden direkt von der offiziellen API geladen. Dafür benötigt dein Browser JavaScript.</p><a href="https://www.studentenwerk-dresden.de/mensen/speiseplan/">Zum offiziellen Speiseplan</a></div></noscript>
     </main>
-    <dialog id="meal-picker" class="meal-picker" aria-labelledby="picker-title">
-      <div class="picker-header"><h2 id="picker-title">Gerichte swipen</h2><button id="close-picker" class="picker-close" type="button" aria-label="Auswahl schließen">×</button></div>
-      <div id="picker-body"></div>
-    </dialog>
-    <dialog id="meal-slot" class="meal-picker slot-dialog" aria-labelledby="slot-title">
-      <div class="picker-header"><h2 id="slot-title">Dein Zufallsgericht</h2><button class="picker-close slot-close" type="button" aria-label="Zufallsauswahl schließen">×</button></div>
-      <p class="picker-context slot-context"></p>
-      <div class="slot-machine">
-        <div class="slot-cabinet">
-          <div class="slot-lights" aria-hidden="true"></div>
-          <div class="slot-window"><div class="slot-track" aria-busy="false"></div></div>
-          <div class="slot-lights" aria-hidden="true"></div>
-        </div>
-        <button class="slot-lever" type="button" aria-label="Hebel ziehen und Zufallsgericht auswählen">
-          <span class="slot-arm" aria-hidden="true"><span class="slot-knob"></span><span class="slot-stem"></span></span>
-          <span class="slot-lever-label">Ziehen</span>
-        </button>
-      </div>
-      <p class="slot-status" role="status" aria-atomic="true"></p>
-    </dialog>
     <footer class="site-footer"><div class="footer-inner"><a class="brand footer-brand" href="./">mensa<span class="brand-dot">.</span></a><a href="https://www.studentenwerk-dresden.de/mensen/speiseplan/" target="_blank" rel="noopener noreferrer">Daten & Bilder: Studentenwerk Dresden <span aria-hidden="true">↗</span></a></div><p class="footer-disclaimer">Ein unabhängiger Speiseplan. Angaben ohne Gewähr. Preise und Verfügbarkeit können sich ändern.</p></footer>
   </body>
 </html>

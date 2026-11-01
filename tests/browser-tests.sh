@@ -21,7 +21,6 @@ cdp_port=${CDP_PORT:-9222}
 pages=(
   tests/swipe.html
   tests/theme.html
-  tests/slot.html
   tests/tom.html
 )
 

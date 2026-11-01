@@ -1,10 +1,10 @@
-import { createMealPicker } from './meal-picker.js';
-import { createMealSlot } from './meal-slot.js';
 import { horizontalSwipe } from './swipe.js';
 import { isVeganMeal, isVegetarianMeal, mealTitleCodes, matchesMealFilters, cleanMealName } from './meal-filters.js';
 import { downloadMealCalendar } from './calendar.js';
 
 const API = 'https://api.studentenwerk-dresden.de/openmensa/v2';
+// Always land on the meals instead of restoring the previous scroll position.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const STORAGE_KEY = 'mensa-hidden-canteens-v1';
 const $ = (id) => document.getElementById(id);
 const dateFormat = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -26,9 +26,8 @@ function isEveningMeal(meal) {
 }
 
 let eveningOnly = initialSelection.evening;
-let tomView = true; // Tom-View ist Standard: die kontinuierliche Ansicht ist die Startseite
 let tomWeekMode = false;
-const weekMode = () => tomView && tomWeekMode;
+const weekMode = () => tomWeekMode;
 const dietaryLabels = { meat: 'Fleisch/Fisch', vegetarian: 'Vegetarisch', vegan: 'Vegan' };
 const dietarySelection = new Set(Object.keys(dietaryLabels));
 const excludedCodes = new Set();
@@ -114,7 +113,7 @@ function renderDays() {
     button.addEventListener('click', () => changeDate(iso));
     $('week-days').append(button);
   }
-  $('menu-heading').textContent = tomView ? 'Tom-View: Gerichte' : selectedDate === today ? 'Gerichte heute' : 'Gerichte';
+  $('menu-heading').textContent = 'Gerichte';
 }
 
 function changeDate(iso) {
@@ -307,8 +306,14 @@ function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
   const content = element('div', 'meal-content');
   content.setAttribute('role', 'region');
   content.setAttribute('aria-label', `Details: ${cleanMealName(meal) || 'Gericht'}`);
-  if (label) content.append(element('p', 'meal-label', label));
-  content.append(element('p', 'meal-category', meal.category || 'Tagesgericht'));
+  const category = meal.category || 'Tagesgericht';
+  if (label) {
+    const meta = element('p', 'meal-label');
+    meta.append(element('span', 'meal-place', label), document.createTextNode(' – '), element('span', 'meal-station', category));
+    content.append(meta);
+  } else {
+    content.append(element('p', 'meal-category', category));
+  }
   content.append(element('h4', 'meal-name', cleanMealName(meal) || 'Gericht ohne Bezeichnung'));
   const prices = element('div', 'meal-prices');
   priceSources.set(prices, meal.prices);
@@ -348,154 +353,6 @@ function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
   card.append(photo, content);
   return card;
 }
-
-function canteenSection(canteen, result, date) {
-  const section = element('section', 'canteen-section');
-  const identity = `${canteen.id}${date ? `-${date}` : ''}`;
-  if (date) section.dataset.date = date;
-  const heading = element('div', 'canteen-heading');
-  const info = element('div');
-  const title = element('div', 'canteen-title');
-  const name = element(date ? 'h4' : 'h3', '', canteen.name);
-  name.id = `canteen-${identity}`;
-  section.setAttribute('aria-labelledby', name.id);
-  title.append(name);
-  if (typeof canteen.address === 'string' && canteen.address.trim()) {
-    const route = element('a', 'canteen-route');
-    route.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-7 18-4-7-7-4 18-7Z"/></svg>';
-    route.append(element('span', '', 'Route'));
-    const appleMaps = /iPhone/i.test(navigator.userAgent);
-    const url = new URL(appleMaps ? 'https://maps.apple.com/' : 'https://www.google.com/maps/dir/');
-    if (appleMaps) {
-      url.searchParams.set('daddr', canteen.address.trim());
-    } else {
-      url.searchParams.set('api', '1');
-      url.searchParams.set('destination', canteen.address.trim());
-    }
-    route.href = url.href;
-    route.target = '_blank';
-    route.rel = 'noopener noreferrer';
-    route.setAttribute('aria-label', `Route zu ${canteen.name} in ${appleMaps ? 'Apple Maps' : 'Google Maps'} (neuer Tab)`);
-    title.append(route);
-  }
-  info.append(title);
-  heading.append(info, element('span', 'meal-count', result.error ? 'Nicht verfügbar' : `${result.meals.length} Gerichte`));
-  section.append(heading);
-  if (result.error) {
-    const empty = element('div', 'canteen-empty', 'Dieser Speiseplan konnte nicht geladen werden. ');
-    const retry = element('button', 'text-button', 'Erneut versuchen');
-    retry.addEventListener('click', () => loadMenus());
-    empty.append(retry);
-    section.append(empty);
-  } else if (!result.meals.length) {
-    section.append(element('div', 'canteen-empty', 'Für diesen Tag sind keine Gerichte veröffentlicht. Die Mensa ist möglicherweise geschlossen.'));
-  } else {
-    const viewport = element('div', `meal-viewport${result.meals.length > 3 ? ' is-paginated' : ''}`);
-    viewport.id = `meals-${identity}`;
-    const track = element('div', 'meal-track');
-    viewport.append(track);
-    section.append(viewport);
-    let pageSize = mobileMeals.matches ? 2 : 3;
-    const pages = [];
-    function buildPages() {
-      pages.length = 0;
-      track.replaceChildren();
-      for (let start = 0; start < result.meals.length; start += pageSize) {
-        const group = element('div', 'meal-grid meal-page');
-        group.append(...result.meals.slice(start, start + pageSize).map((meal) =>
-          mealCard(meal, { calendarEntry: date ? { meal, canteen, date } : undefined })));
-        pages.push(group);
-        track.append(group);
-      }
-    }
-    buildPages();
-    let page = 0;
-    const navigation = element('div', 'meal-navigation');
-    const previous = element('button', 'meal-arrow', '‹');
-    const next = element('button', 'meal-arrow', '›');
-    const status = element('span', 'meal-page-status');
-    status.setAttribute('role', 'status');
-    status.setAttribute('aria-atomic', 'true');
-    previous.type = next.type = 'button';
-    previous.setAttribute('aria-label', `${canteen.name}: vorherige Gerichte`);
-    next.setAttribute('aria-label', `${canteen.name}: nächste Gerichte`);
-    previous.setAttribute('aria-controls', viewport.id);
-    next.setAttribute('aria-controls', viewport.id);
-    function renderPage() {
-      const start = page * pageSize;
-      track.style.transform = `translateX(-${page * 100}%)`;
-      pages.forEach((group, index) => {
-        group.inert = index !== page;
-        group.setAttribute('aria-hidden', String(index !== page));
-      });
-      status.textContent = `${start + 1}–${Math.min(start + pageSize, result.meals.length)} von ${result.meals.length}`;
-      previous.disabled = page === 0;
-      next.disabled = start + pageSize >= result.meals.length;
-    }
-    previous.addEventListener('click', () => {
-      if (page > 0) { page--; renderPage(); }
-    });
-    next.addEventListener('click', () => {
-      if ((page + 1) * pageSize < result.meals.length) { page++; renderPage(); }
-    });
-    let dragOrigin = 0;
-    horizontalSwipe(viewport, {
-      enabled: () => mobileMeals.matches,
-      // A tap should reach the card; capture only once it becomes a swipe.
-      captureOnStart: false,
-      onStart() {
-        // Freeze an in-progress slide at its visual position before following the finger.
-        dragOrigin = new DOMMatrixReadOnly(getComputedStyle(track).transform).m41;
-        track.classList.add('is-dragging');
-        track.style.transform = `translate3d(${dragOrigin}px,0,0)`;
-      },
-      onMove(dx) {
-        if (!mobileMeals.matches) return;
-        track.classList.add('is-dragging');
-        const atEdge = (page === 0 && dx > 0) || (page === pages.length - 1 && dx < 0);
-        const offset = atEdge ? dx * .2 : dx;
-        track.style.transform = `translate3d(${dragOrigin + offset}px,0,0)`;
-      },
-      onEnd(dx, { velocityX = 0 } = {}) {
-        track.classList.remove('is-dragging');
-        if (!mobileMeals.matches) return;
-        if (Math.abs(dx) >= Math.min(65, viewport.clientWidth * .2) ||
-            (Math.abs(dx) > 20 && Math.abs(velocityX) > .5 && dx * velocityX > 0)) {
-          page = Math.max(0, Math.min(pages.length - 1, page + (dx < 0 ? 1 : -1)));
-        }
-        renderPage();
-      }
-    });
-    section.addEventListener('meal-layout-change', () => {
-      const firstMeal = page * pageSize;
-      pageSize = mobileMeals.matches ? 2 : 3;
-      page = Math.floor(firstMeal / pageSize);
-      buildPages();
-      renderPage();
-    });
-    renderPage();
-    if (result.meals.length > 1) {
-      navigation.append(previous, status, next);
-      navigation.hidden = result.meals.length <= pageSize;
-      section.append(navigation);
-    }
-    section.addEventListener('meal-layout-change', () => {
-      navigation.hidden = result.meals.length <= pageSize;
-    });
-  }
-  return section;
-}
-
-const mealPicker = createMealPicker({
-  button: $('start-picker'),
-  dialog: $('meal-picker'),
-  renderCard: mealCard
-});
-const mealSlot = createMealSlot({
-  button: $('start-slot'),
-  dialog: $('meal-slot'),
-  renderCard: mealCard
-});
 
 function renderAdditiveOptions(meals) {
   const options = new Map();
@@ -572,10 +429,26 @@ function tomStream(entries, { weekly }) {
   return section;
 }
 
+let landOnMealsPending = true;
+function landOnMeals() {
+  if (!landOnMealsPending) return;
+  landOnMealsPending = false;
+  const menuArea = document.querySelector('.menu-area');
+  if (!menuArea) return;
+  // The filters stay one scroll above. On sparse days the grid is shorter than
+  // the viewport, so reserve just enough bottom room for the menu top to reach
+  // the viewport top instead of clamping halfway down.
+  menuArea.scrollIntoView({ block: 'start' });
+  for (let i = 0; i < 4; i++) {
+    const top = menuArea.getBoundingClientRect().top;
+    if (top <= 0.5) return;
+    menuArea.style.minHeight = `${Math.ceil(menuArea.getBoundingClientRect().height + top + 1)}px`;
+    menuArea.scrollIntoView({ block: 'start' });
+  }
+}
+
 async function loadMenus() {
   if (detailDialog.open) detailDialog.close();
-  mealPicker.setMeals([]);
-  mealSlot.setMeals([]);
   const version = ++requestVersion;
   listController?.abort();
   listController = new AbortController();
@@ -588,13 +461,14 @@ async function loadMenus() {
     container.setAttribute('aria-busy', 'false');
     $('results-summary').textContent = 'Keine Mensa ausgewählt';
     container.append(message('Keine Mensa ausgewählt', 'Wähle oben mindestens eine Mensa aus, um ihren Speiseplan zu sehen.'));
+    landOnMeals();
     return;
   }
   container.setAttribute('aria-busy', 'true');
   $('results-summary').textContent = 'Speisepläne werden geladen …';
   const loading = element('div', 'meal-grid');
   loading.setAttribute('aria-hidden', 'true');
-  for (let i = 0; i < (tomView ? 5 : 3); i++) loading.append(element('div', 'skeleton'));
+  for (let i = 0; i < 5; i++) loading.append(element('div', 'skeleton'));
   container.append(loading);
   const date = selectedDate;
   const weekly = weekMode();
@@ -635,35 +509,18 @@ async function loadMenus() {
   });
   const entries = tasks.map((task, i) => ({ ...task, result: results[i] }));
   const available = entries.filter(({ result }) => result.error || result.meals.length);
-  if (tomView) {
-    container.replaceChildren(tomStream(available, { weekly }));
-  } else {
-    container.replaceChildren(...available.map(({ canteen, result }) => canteenSection(canteen, result)));
-  }
-  if (!tomView && !available.length) {
-    container.append(message(
-      !diet.size ? 'Keine Ernährungsart ausgewählt' : evening ? 'Keine passenden Abendangebote' : 'Keine passenden Mittagsgerichte',
-      !diet.size ? 'Wähle mindestens eine Ernährungsart aus.' : 'Für die ausgewählten Mensen und diesen Tag sind keine passenden Gerichte veröffentlicht. Ändere die Filter, den Tag oder die Mensa-Auswahl.'
-    ));
-  }
+  container.replaceChildren(tomStream(available, { weekly }));
   container.setAttribute('aria-busy', 'false');
+  landOnMeals();
   const total = results.reduce((sum, result) => sum + result.meals.length, 0);
   const errors = results.filter((result) => result.error).length;
   const dateLabel = weekly
     ? `${asDate(monday).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', timeZone: 'UTC' })} – ${asDate(dates[dates.length - 1]).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}`
     : asDate(date).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   const dietarySummary = diet.size === 3 ? [] : [diet.size ? [...diet].map((type) => dietaryLabels[type]).join(', ') : 'Keine Ernährungsart ausgewählt'];
-  $('results-summary').textContent = [...(weekly ? ['Tom-View'] : []), dateLabel, evening ? 'Abend' : 'Mittag', ...dietarySummary,
+  $('results-summary').textContent = [dateLabel, evening ? 'Abend' : 'Mittag', ...dietarySummary,
     ...(exclusions.size ? [`Ausgeblendet: ${[...exclusions].join(', ')}`] : []),
     `${new Set(available.map(({ canteen }) => canteen.id)).size} Mensen`, `${total} Gerichte`, ...(errors ? [`${errors} nicht abrufbar`] : [])].join(' · ');
-  if (!tomView) {
-    const selectableMeals = entries.flatMap(({ canteen, result }) =>
-      result.meals.map((meal) => ({ meal, canteen }))
-    );
-    const selectionContext = { dateLabel, unavailableCount: errors };
-    mealPicker.setMeals(selectableMeals, selectionContext);
-    mealSlot.setMeals(selectableMeals, selectionContext);
-  }
 }
 
 async function init() {
@@ -720,22 +577,7 @@ $('evening-switch').addEventListener('change', (event) => {
   eveningOnly = event.target.checked;
   if (canteens.length) loadMenus();
 });
-$('tom-view').addEventListener('click', () => {
-  tomView = !tomView;
-  $('tom-view').setAttribute('aria-pressed', String(tomView));
-  if (tomView) tomWeekMode = false;
-  $('tom-layout-week').checked = tomWeekMode;
-  $('evening-switch').disabled = weekMode();
-  $('evening-switch').checked = weekMode() || eveningOnly;
-  $('start-picker').hidden = tomView;
-  $('start-slot').hidden = tomView;
-  $('tom-layout').hidden = !tomView;
-  mobileDayStart = undefined;
-  renderDays();
-  if (canteens.length) loadMenus();
-});
 $('tom-layout-week').addEventListener('change', (event) => {
-  if (!tomView) return;
   tomWeekMode = event.target.checked;
   $('evening-switch').disabled = weekMode();
   $('evening-switch').checked = weekMode() || eveningOnly;
@@ -749,9 +591,6 @@ $('next-week').addEventListener('click', () => navigateDays(mobileMeals.matches 
 mobileMeals.addEventListener('change', () => {
   mobileDayStart = undefined;
   renderDays();
-  document.querySelectorAll('#menus .canteen-section').forEach((section) =>
-    section.dispatchEvent(new Event('meal-layout-change'))
-  );
 });
 $('toggle-all').addEventListener('click', () => {
   const anySelected = canteens.some((canteen) => !hidden.has(canteen.id));

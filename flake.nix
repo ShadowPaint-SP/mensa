@@ -19,8 +19,6 @@
         "favicon.svg"
         "index.html"
         "meal-filters.js"
-        "meal-picker.js"
-        "meal-slot.js"
         "styles.css"
         "swipe.js"
         "theme.js"

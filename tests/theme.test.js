@@ -99,7 +99,7 @@ try {
     await load({ saved: theme });
     const card = doc().createElement('article');
     card.className = 'meal-card';
-    card.innerHTML = '<div class="meal-photo"><span class="diet-badge">Vegan</span></div><div class="meal-content"><h4 class="meal-name">Testgericht</h4><button class="picker-like">Gefällt mir</button><button class="picker-reject">Nein</button></div>';
+    card.innerHTML = '<div class="meal-photo"><span class="diet-badge">Vegan</span></div><div class="meal-content"><h4 class="meal-name">Testgericht</h4></div>';
     doc().querySelector('#menus').append(card);
     const day = doc().createElement('button');
     day.className = 'day-button';
@@ -107,7 +107,6 @@ try {
     day.textContent = 'Heute';
     doc().querySelector('#week-days').append(day);
     for (const node of [doc().body, card, day, card.querySelector('.diet-badge'),
-      card.querySelector('.picker-like'), card.querySelector('.picker-reject'),
       doc().querySelector('.price-category span')]) contrast(node);
     for (const options of doc().querySelectorAll('.dietary-options')) {
       for (const input of options.querySelectorAll('input')) {
@@ -119,11 +118,15 @@ try {
       }
     }
     assert(card.getBoundingClientRect().height === 420, 'Theme preserves fixed card height');
-    const dialog = doc().querySelector('#meal-picker');
+    const dialog = doc().createElement('dialog');
+    dialog.className = 'meal-picker picker-detail';
+    dialog.innerHTML = '<button class="picker-close" type="button">×</button><article class="meal-card"><div class="meal-content"><h4 class="meal-name">Testgericht</h4></div></article>';
+    doc().body.append(dialog);
     dialog.showModal();
     contrast(dialog);
     assert(win().getComputedStyle(dialog).backgroundColor === win().getComputedStyle(card).backgroundColor, 'Dialog and cards use themed surfaces');
     dialog.close();
+    dialog.remove();
     frame.width = 320;
     await wait();
     assert(doc().documentElement.scrollWidth <= 320, 'No horizontal overflow at 320px');
