@@ -129,8 +129,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .no-photo{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:10px;background:radial-gradient(ellipse at center,var(--white),var(--mint-soft))}
 .no-photo svg{width:52px;height:52px;fill:none;stroke:currentColor;stroke-width:1;opacity:.7}
 .no-photo span{font-size:14px;letter-spacing:.2px}
-.diet-badge{position:absolute;left:12px;top:12px;background:var(--mint);color:var(--on-mint);border-radius:5px;padding:6px 8px;font-size:14px;box-shadow:0 1px 4px #00000008;font-weight:600}
-.diet-badge.vegetarian{background:var(--mint-soft);color:var(--ink)}
+.diet-badge{position:absolute;left:6px;top:6px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--mint);color:var(--on-mint);box-shadow:0 1px 4px #0000001a}
+.diet-badge.vegetarian{background:var(--mint-soft);color:var(--ink);border:1px solid var(--mint)}
+.diet-badge svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .sold-out{position:absolute;right:12px;bottom:12px;background:var(--white);color:var(--accent);border-radius:5px;padding:6px 8px;font-size:14px;font-weight:600}
 .meal-content{padding:16px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .meal-content>*{flex-shrink:0}
@@ -203,7 +204,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
   .meal-card .selected-price{font-size:17px}
   .meal-card .price-label,.meal-card .other-price{font-size:13px}
   .meal-card .meal-calendar-button,.meal-card .meal-notes{font-size:13px}
-  .meal-card .diet-badge,.meal-card .sold-out,.meal-card .no-photo span{font-size:13px}
+  .meal-card .sold-out,.meal-card .no-photo span{font-size:13px}
   .site-footer{padding:24px 2px}
   .footer-inner{flex-wrap:wrap;gap:8px 13px}
   .footer-inner>a:last-child{margin-left:0;flex-basis:100%;margin-top:7px}

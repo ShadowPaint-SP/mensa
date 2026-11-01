@@ -99,7 +99,7 @@ try {
     await load({ saved: theme });
     const card = doc().createElement('article');
     card.className = 'meal-card';
-    card.innerHTML = '<div class="meal-photo"><span class="diet-badge">Vegan</span></div><div class="meal-content"><h4 class="meal-name">Testgericht</h4></div>';
+    card.innerHTML = '<div class="meal-photo"><span class="diet-badge" role="img" aria-label="Vegan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3C9 2 3 7 5 14c2 7 14 6 15-11Z"/></svg></span></div><div class="meal-content"><h4 class="meal-name">Testgericht</h4></div>';
     doc().querySelector('#menus').append(card);
     const day = doc().createElement('button');
     day.className = 'day-button';

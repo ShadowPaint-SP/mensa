@@ -149,6 +149,14 @@ try {
   const eveningName = (id) => `Abendangebot: Meal ${id}${{90:' (A, A1, 2)',91:' (D)',92:' (A1, G)'}[id]}`.replace(/\s*\([^()]*\)/g, '').trim();
   assert(doc().querySelectorAll('#menus .meal-name').length === 3, 'Evening switch shows only evening meals');
   assert(doc().querySelector('.meal-name').textContent === eveningName(90), 'Tom-View contains evening dish');
+  const veganBadge = doc().querySelector('.diet-badge:not(.vegetarian)');
+  const vegetarianBadge = doc().querySelector('.diet-badge.vegetarian');
+  assert(veganBadge?.getAttribute('aria-label') === 'Vegan' && veganBadge.querySelector('svg') &&
+    veganBadge.textContent.trim() === '', 'Vegan card uses a compact icon-only badge');
+  assert(vegetarianBadge?.getAttribute('aria-label') === 'Vegetarisch' && vegetarianBadge.querySelector('svg') &&
+    vegetarianBadge.textContent.trim() === '', 'Vegetarian card uses a compact icon-only badge');
+  assert(veganBadge.getBoundingClientRect().width <= 22 && vegetarianBadge.getBoundingClientRect().width <= 22,
+    'Dietary badges stay small');
   assert(doc().querySelectorAll('#dietary-filter input:checked').length === 3, 'All three meal groups selected initially');
   assert(doc().querySelectorAll('#dietary-filter input[type="checkbox"] + span svg[aria-hidden="true"]').length === 3,
     'Each independently selectable meal group has a decorative icon');

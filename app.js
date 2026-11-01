@@ -301,7 +301,16 @@ function mealCard(meal, { full = false, calendarEntry, label = '' } = {}) {
   } else photo.append(photoPlaceholder());
   const vegan = isVeganMeal(meal);
   const vegetarian = isVegetarianMeal(meal);
-  if (vegan || vegetarian) photo.append(element('span', `diet-badge${vegan ? '' : ' vegetarian'}`, vegan ? '♧ Vegan' : '♧ Vegetarisch'));
+  if (vegan || vegetarian) {
+    const badge = element('span', `diet-badge${vegan ? '' : ' vegetarian'}`);
+    badge.setAttribute('role', 'img');
+    badge.setAttribute('aria-label', vegan ? 'Vegan' : 'Vegetarisch');
+    badge.title = vegan ? 'Vegan' : 'Vegetarisch';
+    badge.innerHTML = vegan
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3C9 2 3 7 5 14c2 7 14 6 15-11Z"/><path d="M3 22 16 8m-7 8-1-5m5 1 4 1"/></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 8 2 2c3 3-7 11-13 11 0-6 8-16 11-13Z"/><path d="m16 8 1-5m0 5 5-1m-4 0 3-4M8 13l3 3m0-7 3 3"/></svg>';
+    photo.append(badge);
+  }
   if (meal.soldout) photo.append(element('span', 'sold-out', 'Ausverkauft'));
   const content = element('div', 'meal-content');
   content.setAttribute('role', 'region');
