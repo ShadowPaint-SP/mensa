@@ -39,6 +39,6 @@ export function matchesMealFilters(meal, categories, excludedCodes) {
 // The raw name is kept in the data, filters still read it.
 export function cleanMealName(meal) {
   if (typeof meal?.name !== 'string' || !meal.name.includes('(')) return meal?.name ?? '';
-  const cleaned = meal.name.replace(/\([^()]*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+  const cleaned = meal.name.replace(/\([^()]*\)/g, '').replace(/\s+([,;.!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
   return cleaned || meal.name;
 }
