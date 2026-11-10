@@ -1,4 +1,4 @@
-import { dietaryCategory, mealTitleCodes, matchesMealFilters } from '../meal-filters.js';
+import { dietaryCategory, mealTitleCodes, matchesMealFilters, cleanMealName } from '../meal-filters.js';
 
 const output = document.querySelector('#output');
 const frame = document.querySelector('#preview');
@@ -19,6 +19,8 @@ async function ready() {
 }
 
 try {
+  assert(cleanMealName({ name: 'Feurige Pilzpfanne (A, D), dazu Couscous' }) === 'Feurige Pilzpfanne, dazu Couscous',
+    'Removing allergen codes preserves punctuation spacing');
   assert([...mealTitleCodes({ name: 'Pasta (A, A1, D) (2; 27) (A) (Z9)' })].join(',') === 'A,A1,D,2,27,Z9',
     'Code parser deduplicates complete letter/numeric lists and supports unknown provider codes');
   assert(!mealTitleCodes({ name: 'Vitamin A mit Reis (200 g) (nach Wahl) (-) ()' }).size,
