@@ -352,6 +352,20 @@ try {
     ['2026-01-18T10:00:00Z', '2026-01-19', false],
     ['2026-07-15T22:00:00Z', '2026-07-16', false]
   ];
+  const savedFixture = fixtures.replace("getItem() { return '[2]'; }, setItem() {}", `
+      getItem(key) { return ({'mensa-hidden-canteens-v1':'[]', 'mensa-dietary-filters-v1':'[]', 'mensa-excluded-codes-v1':'["A1"]', 'mensa-price-category-v1':'guest'})[key] ?? null; },
+      setItem(key, value) { window.savedPreferences[key] = value; }
+    `).replace('window.testRequests = [];', 'window.savedPreferences = {}; window.testRequests = [];');
+  await load(savedFixture);
+  assert(!doc().querySelector('#dietary-filter input:checked'), 'Empty dietary selection is restored');
+  assert(doc().querySelector('input[name="price-category"]:checked').value === 'guest', 'Price category is restored');
+  assert(doc().querySelector('#additive-options input[data-code="A1"]')?.checked, 'Excluded code is restored even when absent from meals');
+  doc().querySelector('#dietary-filter input[value="vegan"]').click();
+  doc().querySelector('input[name="price-category"][value="employee"]').click();
+  doc().querySelector('#clear-additives').click();
+  assert(win().savedPreferences['mensa-dietary-filters-v1'] === '["vegan"]', 'Dietary changes are saved');
+  assert(win().savedPreferences['mensa-price-category-v1'] === 'employee', 'Price changes are saved');
+  assert(win().savedPreferences['mensa-excluded-codes-v1'] === '[]', 'Clearing exclusions is saved');
   for (const [instant, expectedDate, expectedEvening] of defaultCases) {
     await load(fixtures.replaceAll('2026-10-22T10:00:00Z', instant));
     assert(doc().querySelector('#date-input')?.value === expectedDate, `Default date at ${instant}`);

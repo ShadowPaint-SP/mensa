@@ -6,6 +6,9 @@ const API = 'https://api.studentenwerk-dresden.de/openmensa/v2';
 // Always land on the meals instead of restoring the previous scroll position.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const STORAGE_KEY = 'mensa-hidden-canteens-v1';
+const DIETARY_STORAGE_KEY = 'mensa-dietary-filters-v1';
+const EXCLUDED_CODES_KEY = 'mensa-excluded-codes-v1';
+const PRICE_CATEGORY_KEY = 'mensa-price-category-v1';
 const $ = (id) => document.getElementById(id);
 const dateFormat = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' });
 const money = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
@@ -30,6 +33,16 @@ let tomWeekMode = false;
 const weekMode = () => tomWeekMode;
 const dietaryLabels = { meat: 'Fleisch/Fisch', vegetarian: 'Vegetarisch', vegan: 'Vegan' };
 const dietarySelection = new Set(Object.keys(dietaryLabels));
+try {
+  const saved = JSON.parse(localStorage.getItem(DIETARY_STORAGE_KEY));
+  if (Array.isArray(saved) && saved.every((value) => Object.hasOwn(dietaryLabels, value))) {
+    dietarySelection.clear();
+    saved.forEach((value) => dietarySelection.add(value));
+  }
+} catch { /* Browsing without storage is supported. */ }
+document.querySelectorAll('#dietary-filter input').forEach((input) => {
+  input.checked = dietarySelection.has(input.value);
+});
 const excludedCodes = new Set();
 let codeLabels = new Map();
 let priceCategory = 'student';
@@ -38,6 +51,18 @@ const priceCategories = {
   employee: { label: 'Bediensteter', keys: ['Bedienstete', 'employees'] },
   guest: { label: 'Gäste', keys: ['Gäste', 'others'] },
 };
+try {
+  const savedCodes = JSON.parse(localStorage.getItem(EXCLUDED_CODES_KEY));
+  if (Array.isArray(savedCodes)) {
+    savedCodes.filter((code) => typeof code === 'string' && /^(?:[A-Z]\d*|\d+)$/.test(code))
+      .forEach((code) => excludedCodes.add(code));
+  }
+} catch { /* Browsing without storage is supported. */ }
+try {
+  const savedPrice = localStorage.getItem(PRICE_CATEGORY_KEY);
+  if (Object.hasOwn(priceCategories, savedPrice)) priceCategory = savedPrice;
+} catch { /* Browsing without storage is supported. */ }
+document.querySelector(`input[name="price-category"][value="${priceCategory}"]`).checked = true;
 const priceSources = new WeakMap();
 let selectedDate = initialSelection.date;
 let canteens = [];
@@ -561,6 +586,7 @@ $('price-category').addEventListener('change', (event) => {
   const value = event.target.value;
   if (!Object.hasOwn(priceCategories, value)) return;
   priceCategory = value;
+  try { localStorage.setItem(PRICE_CATEGORY_KEY, value); } catch { /* Optional preference only. */ }
   document.querySelectorAll('.meal-prices').forEach((container) => {
     renderMealPrice(container, priceSources.get(container));
   });
@@ -569,16 +595,22 @@ $('dietary-filter').addEventListener('change', (event) => {
   const { value, checked } = event.target;
   if (!Object.hasOwn(dietaryLabels, value)) return;
   checked ? dietarySelection.add(value) : dietarySelection.delete(value);
+  try { localStorage.setItem(DIETARY_STORAGE_KEY, JSON.stringify([...dietarySelection])); } catch { /* Optional preference only. */ }
   if (canteens.length) loadMenus();
 });
 $('additive-options').addEventListener('change', (event) => {
   const { code } = event.target.dataset;
   if (!codeLabels.has(code)) return;
   event.target.checked ? excludedCodes.add(code) : excludedCodes.delete(code);
+  saveExcludedCodes();
   if (canteens.length) loadMenus();
 });
+function saveExcludedCodes() {
+  try { localStorage.setItem(EXCLUDED_CODES_KEY, JSON.stringify([...excludedCodes])); } catch { /* Optional preference only. */ }
+}
 $('clear-additives').addEventListener('click', () => {
   excludedCodes.clear();
+  saveExcludedCodes();
   if (canteens.length) loadMenus();
 });
 $('evening-switch').checked = eveningOnly;
