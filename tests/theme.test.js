@@ -38,7 +38,7 @@ try {
   function expectTheme(theme) {
     assert(doc().documentElement.dataset.theme === theme, `Active ${theme} theme`);
     assert(button().getAttribute('aria-pressed') === String(theme === 'dark'), 'Accessible pressed state');
-    assert(doc().querySelector('meta[name="theme-color"]').content === (theme === 'dark' ? '#0b1220' : '#ffffff'), 'Browser theme color');
+    assert(doc().querySelector('meta[name="theme-color"]').content === (theme === 'dark' ? '#121212' : '#ffffff'), 'Browser theme color');
     assert(win().getComputedStyle(doc().documentElement).colorScheme === theme, 'Native control color scheme');
   }
   for (const [dark, saved, expected] of [
@@ -118,11 +118,35 @@ try {
       }
     }
     assert(card.getBoundingClientRect().height === 420, 'Theme preserves fixed card height');
+    // Saturated blue is left over from the old navy palette; selected pills and the
+    // dialog backdrop must stay neutral in both themes.
+    function neutralColor(value) {
+      const [r, g, b] = rgb(value).map(Math.round);
+      const alpha = Number(value.match(/[\d.]+/g)[3] ?? 1);
+      return alpha > 0.5 && Math.max(r, g, b) - Math.min(r, g, b) <= 3;
+    }
+    const evening = doc().querySelector('#evening-switch');
+    const highlight = doc().querySelector('.period-highlight');
+    evening.click();
+    win().getComputedStyle(highlight).backgroundColor;
+    highlight.getAnimations().forEach((animation) => animation.finish());
+    const pill = win().getComputedStyle(highlight).backgroundColor;
+    assert(neutralColor(pill), `Selected period pill is neutral, not navy (${pill})`);
+    evening.click();
+    const layout = doc().querySelector('.layout-highlight');
+    doc().querySelector('#tom-layout-week').click();
+    win().getComputedStyle(layout).backgroundColor;
+    layout.getAnimations().forEach((animation) => animation.finish());
+    const layoutPill = win().getComputedStyle(layout).backgroundColor;
+    assert(neutralColor(layoutPill), `Selected layout pill is neutral, not navy (${layoutPill})`);
+    doc().querySelector('#tom-layout-week').click();
     const dialog = doc().createElement('dialog');
     dialog.className = 'meal-picker picker-detail';
     dialog.innerHTML = '<button class="picker-close" type="button">×</button><article class="meal-card"><div class="meal-content"><h4 class="meal-name">Testgericht</h4></div></article>';
     doc().body.append(dialog);
     dialog.showModal();
+    const backdrop = win().getComputedStyle(dialog, '::backdrop').backgroundColor;
+    assert(neutralColor(backdrop), `Dialog backdrop is neutral, not navy (${backdrop})`);
     contrast(dialog);
     assert(win().getComputedStyle(dialog).backgroundColor === win().getComputedStyle(card).backgroundColor, 'Dialog and cards use themed surfaces');
     dialog.close();
@@ -134,6 +158,7 @@ try {
     frame.width = 390;
   }
   pass('Light/dark text contrast, dietary filter states, cards, dialogs, native inputs and compact mobile header');
+  pass('Selected pills and dialog backdrop use neutral, non-blue colors');
   output.textContent += '\n\nAll tests passed.';
   document.title = 'PASS — Theme regression tests';
 } catch (error) {
